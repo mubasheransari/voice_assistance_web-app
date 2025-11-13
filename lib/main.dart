@@ -17,7 +17,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 void main() {
   runApp(const MyApp());
 }
-
+//phone number, name, gender, city, age, profession , review
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
