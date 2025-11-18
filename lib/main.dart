@@ -7,10 +7,32 @@ import 'package:speech_to_text/speech_recognition_error.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 
+
+
+import 'dart:async';
+import 'dart:math';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
+
+/// phone number, name, gender, city, age, profession, review
+const List<String> kSurveyQuestions = [
+  'What is your phone number?',
+  'What is your name?',
+  'What is your gender?',
+  'Which city do you live in?',
+  'How old are you?',
+  'What is your profession?',
+  'Please share your review about Mezan Chai.',
+];
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -18,8 +40,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Mezan Chai Assistant',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Poppins',
         brightness: Brightness.dark,
@@ -33,6 +55,8 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+/* ---------- MODELS ---------- */
 
 enum ChatRole { user, bot }
 
@@ -50,21 +74,22 @@ class ChatMessage {
   });
 }
 
-const List<String> kSurveyQuestions = [
-  'What is your name?',
-  'What is your phone number?',
-  'Which city do you live in?',
-  'What is your age?',
-  'What is your profession?',
-];
+/* ---------- THEME CONSTANTS ---------- */
 
 const _kText = Color(0xFFE5E7EB);
 const _kMuted = Color(0xFF9CA3AF);
-const _kAccent = Color(0xFFEC4899);
-const _kAccent2 = Color(0xFF8B5CF6);
+const _kAccent = Color(0xFFEC4899); // pink
+const _kAccent2 = Color(0xFF8B5CF6); // purple
+
+/* ---------- GLASS WIDGET ---------- */
 
 class Glass extends StatelessWidget {
-  const Glass({super.key, required this.child, this.radius = 24, this.padding});
+  const Glass({
+    super.key,
+    required this.child,
+    this.radius = 24,
+    this.padding,
+  });
 
   final Widget child;
   final double radius;
@@ -93,6 +118,76 @@ class Glass extends StatelessWidget {
   }
 }
 
+/* ---------- PERMISSION SCREEN ---------- */
+
+class PermissionScreen extends StatelessWidget {
+  const PermissionScreen({super.key});
+
+  Future<void> _openSettings() async {
+    await openAppSettings();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF020617),
+      appBar: AppBar(
+        title: const Text('Microphone Permission'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Glass(
+          radius: 20,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.mic_off_rounded, size: 48, color: _kAccent),
+              const SizedBox(height: 16),
+              const Text(
+                'Microphone access is required',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _kText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Please allow microphone permission in app settings so we can listen to your answers.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _kMuted,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_rounded),
+                label: const Text('Open App Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/* ---------- MAIN SCREEN ---------- */
+
 class VoiceAssistantChatScreen extends StatefulWidget {
   const VoiceAssistantChatScreen({super.key});
 
@@ -112,31 +207,28 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   bool _speechAvailable = false;
   bool _surveyRunning = false;
   bool _listening = false;
-  bool _awaitingAnswerAfterTts = false;
-  String? _speakingId;
-
-  int _currentQuestionIndex = -1;
   String _liveTranscript = '';
 
+  String? _speakingId;
+
+  int _currentQuestionIndex = 0;
   final Map<int, String> _answers = {};
 
   @override
   void initState() {
     super.initState();
     _initTts();
-    _seedWelcome();
     _initSpeech();
+    _seedWelcome();
   }
 
   void _seedWelcome() {
     _messages.add(
       ChatMessage(
-        id: 'm0',
+        id: 'welcome',
         role: ChatRole.bot,
         text:
-            'Welcome to Mezan voice survey.\n\n'
-            'Tap the START button below. I will ask you questions one by one. '
-            'Answer each question by speaking, and I will write your answers.',
+            'Welcome to Mezan Chai voice survey.\nTap "Start Survey" and I will ask you a few questions one by one. Answer with your voice.',
         ts: DateTime.now(),
       ),
     );
@@ -152,18 +244,12 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
     });
 
     _tts.setCompletionHandler(() {
-      if (!mounted) return;
       setState(() {
         _speakingId = null;
       });
-      if (_awaitingAnswerAfterTts) {
-        _awaitingAnswerAfterTts = false;
-        _startListeningForAnswer();
-      }
     });
 
     _tts.setErrorHandler((msg) {
-      if (!mounted) return;
       setState(() {
         _speakingId = null;
       });
@@ -171,34 +257,24 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   }
 
   Future<void> _initSpeech() async {
-    final available = await _speech.initialize(
-      onStatus: _onSpeechStatus,
-      onError: _onSpeechError,
-    );
-    if (!mounted) return;
-    setState(() {
-      _speechAvailable = available;
-    });
-  }
-
-  void _onSpeechStatus(String status) {
-    debugPrint('🗣️ speech status: $status');
-    if (status == 'notListening' && _listening) {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+        },
+        onError: (error) {
+          debugPrint('Speech error: $error');
+        },
+      );
       setState(() {
-        _listening = false;
+        _speechAvailable = available;
       });
-      if (_liveTranscript.trim().isNotEmpty) {
-        _handleFinalTranscript(_liveTranscript.trim());
-      }
+    } catch (e) {
+      debugPrint('Speech init error: $e');
+      setState(() {
+        _speechAvailable = false;
+      });
     }
-  }
-
-  void _onSpeechError(stt.SpeechRecognitionError error) {
-    debugPrint('❌ speech error: $error');
-    if (!mounted) return;
-    setState(() {
-      _listening = false;
-    });
   }
 
   @override
@@ -223,102 +299,71 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   /* ---------- PERMISSIONS ---------- */
 
   Future<bool> _ensureMicPermission() async {
-    var status = await Permission.microphone.status;
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
 
-    if (status.isGranted) {
-      return true;
-    }
+    final result = await Permission.microphone.request();
+    if (result.isGranted) return true;
 
-    if (status.isPermanentlyDenied) {
-      if (!mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Microphone Permission Needed'),
-          content: const Text(
-            'Please enable microphone permission in app settings to use voice answers.',
+    if (result.isPermanentlyDenied) {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PermissionScreen()),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission is required for voice input.'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
-          ],
-        ),
-      );
-      return false;
+        );
+      }
     }
-
-    // Ask for permission
-    status = await Permission.microphone.request();
-    if (status.isGranted) {
-      return true;
-    }
-
-    if (!mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Microphone permission denied.')),
-    );
     return false;
   }
 
-  /* ---------- FLOW CONTROLS ---------- */
+  /* ---------- SURVEY FLOW ---------- */
 
   Future<void> _startSurvey() async {
-    // Ensure speech engine available
     if (!_speechAvailable) {
-      final again = await _speech.initialize(
-        onStatus: _onSpeechStatus,
-        onError: _onSpeechError,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Speech recognition is not available on this device.'),
+        ),
       );
-      if (!again) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Speech recognition not available on this device.'),
-          ),
-        );
-        return;
-      }
-      setState(() {
-        _speechAvailable = true;
-      });
+      return;
     }
 
-    // Ensure mic permission
     final ok = await _ensureMicPermission();
     if (!ok) return;
 
-    // Reset flow
-    await _speech.stop();
-    await _tts.stop();
-
     setState(() {
-      _messages.clear();
-      _answers.clear();
-      _currentQuestionIndex = 0;
       _surveyRunning = true;
-      _liveTranscript = '';
+      _currentQuestionIndex = 0;
+      _answers.clear();
+      _messages.clear();
     });
 
-    _messages.add(
-      ChatMessage(
-        id: 'intro_${DateTime.now().millisecondsSinceEpoch}',
-        role: ChatRole.bot,
-        text: 'Great! Let\'s get started. I will ask you some questions now.',
-        ts: DateTime.now(),
-      ),
+    // intro message
+    final intro = ChatMessage(
+      id: 'intro_${DateTime.now().millisecondsSinceEpoch}',
+      role: ChatRole.bot,
+      text:
+          'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+      ts: DateTime.now(),
     );
-
+    setState(() {
+      _messages.add(intro);
+    });
     _scrollToBottom();
-    await Future.delayed(const Duration(milliseconds: 600));
+
+    await _tts.speak(
+      'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+    );
+    await Future.delayed(const Duration(milliseconds: 700));
+
     await _askCurrentQuestion();
   }
 
@@ -330,21 +375,25 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
 
     final q = kSurveyQuestions[_currentQuestionIndex];
 
-    final botMessage = ChatMessage(
-      id: 'q_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
+    final botQuestion = ChatMessage(
+      id: 'q_$_currentQuestionIndex'
+          '_${DateTime.now().millisecondsSinceEpoch}',
       role: ChatRole.bot,
       text: q,
       ts: DateTime.now(),
     );
 
     setState(() {
-      _messages.add(botMessage);
-      _speakingId = botMessage.id;
+      _messages.add(botQuestion);
+      _speakingId = botQuestion.id;
     });
     _scrollToBottom();
 
-    _awaitingAnswerAfterTts = true; // when TTS completes, we start listening
+    await _tts.stop();
     await _tts.speak(q);
+
+    // When TTS finishes, start listening
+    await _startListeningForAnswer();
   }
 
   Future<void> _startListeningForAnswer() async {
@@ -369,10 +418,14 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
           _handleFinalTranscript(result.recognizedWords.trim());
         }
       },
-      listenFor: const Duration(seconds: 15),
-      pauseFor: const Duration(seconds: 4),
+      // ⬇️ longer listening
+      listenFor: const Duration(seconds: 40),
+      // ⬇️ wait in silence before stopping
+      pauseFor: const Duration(seconds: 6),
       partialResults: true,
       localeId: 'en_US',
+      cancelOnError: true,
+      listenMode: stt.ListenMode.dictation,
     );
   }
 
@@ -384,61 +437,68 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       _listening = false;
     });
 
-    if (text.isEmpty) {
-      // If nothing captured, just re-ask same question
-      _messages.add(
-        ChatMessage(
-          id: 'empty_${DateTime.now().millisecondsSinceEpoch}',
-          role: ChatRole.bot,
-          text: 'I could not hear you clearly. Please answer again.',
-          ts: DateTime.now(),
-        ),
+    // --- NOISE FILTER: require at least 2 words ---
+    final cleaned = text.trim();
+    final wordCount =
+        cleaned.isEmpty ? 0 : cleaned.split(RegExp(r'\s+')).length;
+
+    if (wordCount < 2) {
+      // Treat as unclear / noisy answer
+      final warn = ChatMessage(
+        id: 'noise_${DateTime.now().millisecondsSinceEpoch}',
+        role: ChatRole.bot,
+        text:
+            'I could not hear you clearly. Please answer again in a quiet place and speak a full sentence.',
+        ts: DateTime.now(),
       );
+      setState(() {
+        _messages.add(warn);
+      });
       _scrollToBottom();
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _askCurrentQuestion();
+      await Future.delayed(const Duration(milliseconds: 700));
+      await _askCurrentQuestion(); // re-ask same question
       return;
     }
 
-    // Save answer
-    _answers[_currentQuestionIndex] = text;
+    // --- Accept answer ---
+    _answers[_currentQuestionIndex] = cleaned;
 
-    // Add user message to chat
     final userMessage = ChatMessage(
       id: 'a_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
       role: ChatRole.user,
-      text: text,
+      text: cleaned,
       ts: DateTime.now(),
     );
+
     setState(() {
       _messages.add(userMessage);
       _liveTranscript = '';
     });
     _scrollToBottom();
 
-    // Move to next question
+    // Next question
     _currentQuestionIndex++;
     if (_currentQuestionIndex < kSurveyQuestions.length) {
       await Future.delayed(const Duration(milliseconds: 700));
       await _askCurrentQuestion();
     } else {
-      // Survey complete
+      // Survey finished
       setState(() {
         _surveyRunning = false;
       });
 
-      final botDone = ChatMessage(
+      final doneMsg = ChatMessage(
         id: 'done_${DateTime.now().millisecondsSinceEpoch}',
         role: ChatRole.bot,
         text:
-            'Thank you for your time and feedback on Mezan voice survey. '
-            'Your responses are recorded.',
+            'Thank you for your time and feedback on Mezan Chai. Your responses are recorded.',
         ts: DateTime.now(),
       );
       setState(() {
-        _messages.add(botDone);
+        _messages.add(doneMsg);
       });
       _scrollToBottom();
+
       await _tts.speak(
         'Thank you for your time and feedback. Your responses are recorded.',
       );
@@ -451,17 +511,19 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Gradient background
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF020617), Color(0xFF111827), Color(0xFF1F2937)],
+            colors: [
+              Color(0xFF020617),
+              Color(0xFF111827),
+              Color(0xFF1F2937),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Stack(
           children: [
-            // Soft blurred blobs behind
             Positioned(
               top: -80,
               left: -40,
@@ -522,7 +584,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Mezan voice survey',
+                                    'Mezan Chai Voice Survey',
                                     style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w700,
@@ -531,7 +593,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                   ),
                                   SizedBox(height: 2),
                                   Text(
-                                    'Answer each question using your voice.',
+                                    'Answer each question with your voice.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: _kMuted,
@@ -541,19 +603,19 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                               ),
                               const Spacer(),
                               IconButton(
-                                tooltip: 'Reset survey',
+                                tooltip: 'Clear chat',
                                 onPressed: () {
                                   setState(() {
                                     _messages.clear();
-                                    _answers.clear();
-                                    _currentQuestionIndex = -1;
                                     _surveyRunning = false;
+                                    _currentQuestionIndex = 0;
+                                    _answers.clear();
                                     _liveTranscript = '';
+                                    _seedWelcome();
                                   });
-                                  _seedWelcome();
                                 },
                                 icon: const Icon(
-                                  Icons.refresh_rounded,
+                                  Icons.delete_outline,
                                   color: _kMuted,
                                 ),
                               ),
@@ -562,7 +624,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // MAIN GLASS CHAT CARD
+                        // MAIN CARD
                         Expanded(
                           child: Glass(
                             radius: 26,
@@ -574,42 +636,25 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                   child: ListView.builder(
                                     controller: _scroll,
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    itemCount:
-                                        _messages.length +
-                                        (_listening &&
-                                                _liveTranscript.isNotEmpty
+                                    itemCount: _messages.length +
+                                        (_listening && _liveTranscript.isNotEmpty
                                             ? 1
                                             : 0),
                                     itemBuilder: (context, index) {
-                                      // extra live transcript bubble
+                                      // last item: live transcript bubble
                                       if (_listening &&
                                           _liveTranscript.isNotEmpty &&
                                           index == _messages.length) {
-                                        final liveMsg = ChatMessage(
-                                          id: 'live',
-                                          role: ChatRole.user,
-                                          text: _liveTranscript,
-                                          ts: DateTime.now(),
-                                        );
-                                        return Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            _ChatBubble(
-                                              message: liveMsg,
-                                              isSpeaking: false,
-                                              onCopy: null,
-                                              onSpeak: null,
-                                              isLive: true,
-                                            ),
-                                            const SizedBox(height: 8),
-                                          ],
+                                        return Align(
+                                          alignment: Alignment.centerRight,
+                                          child: _LiveTranscriptBubble(
+                                            text: _liveTranscript,
+                                          ),
                                         );
                                       }
 
                                       final m = _messages[index];
                                       final isUser = m.role == ChatRole.user;
-
                                       return Column(
                                         crossAxisAlignment: isUser
                                             ? CrossAxisAlignment.end
@@ -625,27 +670,9 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                               onCopy: () => Clipboard.setData(
                                                 ClipboardData(text: m.text),
                                               ),
-                                              onSpeak: m.role == ChatRole.bot
-                                                  ? () async {
-                                                      if (_speakingId == m.id) {
-                                                        await _tts.stop();
-                                                        setState(() {
-                                                          _speakingId = null;
-                                                        });
-                                                      } else {
-                                                        await _tts.stop();
-                                                        setState(() {
-                                                          _speakingId = m.id;
-                                                        });
-                                                        await _tts.speak(
-                                                          m.text,
-                                                        );
-                                                      }
-                                                    }
-                                                  : null,
                                             ),
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: 10),
                                         ],
                                       );
                                     },
@@ -654,85 +681,67 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
 
                                 const SizedBox(height: 8),
 
-                                // Listening indicator
-                                if (_listening)
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(
-                                        Icons.mic_rounded,
-                                        size: 18,
-                                        color: _kAccent,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Listening… please speak your answer',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: _kText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                if (_listening) const SizedBox(height: 12),
-
-                                // START / RESTART BUTTON
-                                Glass(
-                                  radius: 18,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _surveyRunning
-                                              ? 'Survey in progress…'
-                                              : 'Tap Start to begin the voice survey.',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: _kMuted,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [_kAccent, _kAccent2],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: _kAccent.withOpacity(0.6),
-                                              blurRadius: 14,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: TextButton.icon(
-                                          onPressed: _surveyRunning
-                                              ? null
-                                              : _startSurvey,
-                                          icon: const Icon(
-                                            Icons.play_arrow_rounded,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                          label: const Text(
-                                            'Start',
+                                // Status + Start / Restart button
+                                Row(
+                                  children: [
+                                    if (_listening)
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.mic_rounded,
+                                              size: 18, color: _kAccent),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Listening… speak now',
                                             style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
+                                              color: Colors.red.shade300,
+                                              fontSize: 12,
                                             ),
                                           ),
+                                        ],
+                                      )
+                                    else if (_surveyRunning)
+                                      const Text(
+                                        'Asking questions…',
+                                        style: TextStyle(
+                                          color: _kMuted,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    else
+                                      const Text(
+                                        'Tap Start Survey to begin.',
+                                        style: TextStyle(
+                                          color: _kMuted,
+                                          fontSize: 12,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    const Spacer(),
+                                    ElevatedButton.icon(
+                                      onPressed: _surveyRunning
+                                          ? null
+                                          : () => _startSurvey(),
+                                      icon: const Icon(Icons.play_arrow_rounded),
+                                      label: Text(
+                                        _currentQuestionIndex == 0
+                                            ? 'Start Survey'
+                                            : 'Restart Survey',
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _surveyRunning
+                                            ? Colors.grey
+                                            : _kAccent,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 10,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -743,7 +752,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                   ),
                 ),
               ),
-            ),
+            )
           ],
         ),
       ),
@@ -751,36 +760,31 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   }
 }
 
-/* ---------- BUBBLES ---------- */
+/* ---------- CHAT BUBBLES ---------- */
 
 class _ChatBubble extends StatelessWidget {
   const _ChatBubble({
     required this.message,
     required this.isSpeaking,
     this.onCopy,
-    this.onSpeak,
-    this.isLive = false,
   });
 
   final ChatMessage message;
   final bool isSpeaking;
   final VoidCallback? onCopy;
-  final VoidCallback? onSpeak;
-  final bool isLive;
 
   bool get isUser => message.role == ChatRole.user;
 
   @override
   Widget build(BuildContext context) {
     if (isUser) {
+      // User bubble
       return Container(
         constraints: const BoxConstraints(maxWidth: 600),
         padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isLive
-                ? [const Color(0xFFEC4899).withOpacity(0.7), _kAccent2]
-                : [_kAccent, _kAccent2],
+          gradient: const LinearGradient(
+            colors: [_kAccent, _kAccent2],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -795,7 +799,7 @@ class _ChatBubble extends StatelessWidget {
               color: _kAccent.withOpacity(0.6),
               blurRadius: 18,
               offset: const Offset(0, 6),
-            ),
+            )
           ],
         ),
         child: SelectableText(
@@ -809,6 +813,7 @@ class _ChatBubble extends StatelessWidget {
       );
     }
 
+    // Bot bubble
     return Glass(
       radius: 18,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
@@ -817,7 +822,11 @@ class _ChatBubble extends StatelessWidget {
         children: [
           SelectableText(
             message.text,
-            style: const TextStyle(color: _kText, fontSize: 14.5, height: 1.35),
+            style: const TextStyle(
+              color: _kText,
+              fontSize: 14.5,
+              height: 1.35,
+            ),
           ),
           const SizedBox(height: 6),
           Row(
@@ -829,15 +838,12 @@ class _ChatBubble extends StatelessWidget {
                   label: 'Copy',
                   onTap: onCopy!,
                 ),
-              if (onSpeak != null) const SizedBox(width: 4),
-              if (onSpeak != null)
-                _MiniIconButton(
-                  icon: isSpeaking
-                      ? Icons.stop_rounded
-                      : Icons.volume_up_rounded,
-                  label: isSpeaking ? 'Stop' : 'Listen',
-                  onTap: onSpeak!,
-                ),
+              const SizedBox(width: 4),
+              Icon(
+                isSpeaking ? Icons.volume_up_rounded : Icons.volume_mute_rounded,
+                size: 14,
+                color: _kMuted,
+              ),
             ],
           ),
         ],
@@ -869,13 +875,49 @@ class _MiniIconButton extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: _kMuted),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: _kMuted)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: _kMuted,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+class _LiveTranscriptBubble extends StatelessWidget {
+  const _LiveTranscriptBubble({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 600),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: Colors.white.withOpacity(0.08),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.25),
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: _kText,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+/* ---------- BACKGROUND BLOB ---------- */
 
 class _Blob extends StatelessWidget {
   const _Blob({required this.color, required this.size});
@@ -902,3 +944,902 @@ class _Blob extends StatelessWidget {
     );
   }
 }
+
+
+// void main() {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       debugShowCheckedModeBanner: false,
+//       title: 'Mezan Assistant',
+//       theme: ThemeData(
+//         fontFamily: 'Poppins',
+//         brightness: Brightness.dark,
+//         colorScheme: ColorScheme.fromSeed(
+//           seedColor: const Color(0xFFEC4899),
+//           brightness: Brightness.dark,
+//         ),
+//         useMaterial3: true,
+//       ),
+//       home: const VoiceAssistantChatScreen(),
+//     );
+//   }
+// }
+
+// enum ChatRole { user, bot }
+
+// class ChatMessage {
+//   final String id;
+//   final ChatRole role;
+//   final String text;
+//   final DateTime ts;
+
+//   ChatMessage({
+//     required this.id,
+//     required this.role,
+//     required this.text,
+//     required this.ts,
+//   });
+// }
+
+// //it is working fine but due to external voices it wont records the answer properly and i also want to increase the time of listerning. 
+
+// const List<String> kSurveyQuestions = [
+//   'What is your name?',
+//   'What is your phone number?',
+//   'Which city do you live in?',
+//   'What is your age?',
+//   'What is your profession?',
+// ];
+
+// const _kText = Color(0xFFE5E7EB);
+// const _kMuted = Color(0xFF9CA3AF);
+// const _kAccent = Color(0xFFEC4899);
+// const _kAccent2 = Color(0xFF8B5CF6);
+
+// class Glass extends StatelessWidget {
+//   const Glass({super.key, required this.child, this.radius = 24, this.padding});
+
+//   final Widget child;
+//   final double radius;
+//   final EdgeInsetsGeometry? padding;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return ClipRRect(
+//       borderRadius: BorderRadius.circular(radius),
+//       child: BackdropFilter(
+//         filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+//         child: Container(
+//           decoration: BoxDecoration(
+//             borderRadius: BorderRadius.circular(radius),
+//             color: Colors.white.withOpacity(0.08),
+//             border: Border.all(
+//               color: Colors.white.withOpacity(0.25),
+//               width: 1.0,
+//             ),
+//           ),
+//           padding: padding ?? const EdgeInsets.all(16),
+//           child: child,
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class VoiceAssistantChatScreen extends StatefulWidget {
+//   const VoiceAssistantChatScreen({super.key});
+
+//   @override
+//   State<VoiceAssistantChatScreen> createState() =>
+//       _VoiceAssistantChatScreenState();
+// }
+
+// class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
+//   final FlutterTts _tts = FlutterTts();
+//   final stt.SpeechToText _speech = stt.SpeechToText();
+
+//   final ScrollController _scroll = ScrollController();
+
+//   final List<ChatMessage> _messages = [];
+
+//   bool _speechAvailable = false;
+//   bool _surveyRunning = false;
+//   bool _listening = false;
+//   bool _awaitingAnswerAfterTts = false;
+//   String? _speakingId;
+
+//   int _currentQuestionIndex = -1;
+//   String _liveTranscript = '';
+
+//   final Map<int, String> _answers = {};
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initTts();
+//     _seedWelcome();
+//     _initSpeech();
+//   }
+
+//   void _seedWelcome() {
+//     _messages.add(
+//       ChatMessage(
+//         id: 'm0',
+//         role: ChatRole.bot,
+//         text:
+//             'Welcome to Mezan voice survey.\n\n'
+//             'Tap the START button below. I will ask you questions one by one. '
+//             'Answer each question by speaking, and I will write your answers.',
+//         ts: DateTime.now(),
+//       ),
+//     );
+//   }
+
+//   void _initTts() {
+//     _tts.setLanguage('en-US');
+//     _tts.setSpeechRate(0.5);
+//     _tts.setPitch(1.0);
+
+//     _tts.setStartHandler(() {
+//       setState(() {});
+//     });
+
+//     _tts.setCompletionHandler(() {
+//       if (!mounted) return;
+//       setState(() {
+//         _speakingId = null;
+//       });
+//       if (_awaitingAnswerAfterTts) {
+//         _awaitingAnswerAfterTts = false;
+//         _startListeningForAnswer();
+//       }
+//     });
+
+//     _tts.setErrorHandler((msg) {
+//       if (!mounted) return;
+//       setState(() {
+//         _speakingId = null;
+//       });
+//     });
+//   }
+
+//   Future<void> _initSpeech() async {
+//     final available = await _speech.initialize(
+//       onStatus: _onSpeechStatus,
+//       onError: _onSpeechError,
+//     );
+//     if (!mounted) return;
+//     setState(() {
+//       _speechAvailable = available;
+//     });
+//   }
+
+//   void _onSpeechStatus(String status) {
+//     debugPrint('🗣️ speech status: $status');
+//     if (status == 'notListening' && _listening) {
+//       setState(() {
+//         _listening = false;
+//       });
+//       if (_liveTranscript.trim().isNotEmpty) {
+//         _handleFinalTranscript(_liveTranscript.trim());
+//       }
+//     }
+//   }
+
+//   void _onSpeechError(stt.SpeechRecognitionError error) {
+//     debugPrint('❌ speech error: $error');
+//     if (!mounted) return;
+//     setState(() {
+//       _listening = false;
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _scroll.dispose();
+//     _tts.stop();
+//     _speech.stop();
+//     super.dispose();
+//   }
+
+//   void _scrollToBottom() {
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (!_scroll.hasClients) return;
+//       _scroll.animateTo(
+//         _scroll.position.maxScrollExtent + 120,
+//         duration: const Duration(milliseconds: 250),
+//         curve: Curves.easeOut,
+//       );
+//     });
+//   }
+
+//   /* ---------- PERMISSIONS ---------- */
+
+//   Future<bool> _ensureMicPermission() async {
+//     var status = await Permission.microphone.status;
+
+//     if (status.isGranted) {
+//       return true;
+//     }
+
+//     if (status.isPermanentlyDenied) {
+//       if (!mounted) return false;
+//       await showDialog(
+//         context: context,
+//         builder: (ctx) => AlertDialog(
+//           title: const Text('Microphone Permission Needed'),
+//           content: const Text(
+//             'Please enable microphone permission in app settings to use voice answers.',
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () => Navigator.of(ctx).pop(),
+//               child: const Text('Cancel'),
+//             ),
+//             TextButton(
+//               onPressed: () async {
+//                 Navigator.of(ctx).pop();
+//                 await openAppSettings();
+//               },
+//               child: const Text('Open Settings'),
+//             ),
+//           ],
+//         ),
+//       );
+//       return false;
+//     }
+
+//     // Ask for permission
+//     status = await Permission.microphone.request();
+//     if (status.isGranted) {
+//       return true;
+//     }
+
+//     if (!mounted) return false;
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('Microphone permission denied.')),
+//     );
+//     return false;
+//   }
+
+//   /* ---------- FLOW CONTROLS ---------- */
+
+//   Future<void> _startSurvey() async {
+//     // Ensure speech engine available
+//     if (!_speechAvailable) {
+//       final again = await _speech.initialize(
+//         onStatus: _onSpeechStatus,
+//         onError: _onSpeechError,
+//       );
+//       if (!again) {
+//         if (!mounted) return;
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('Speech recognition not available on this device.'),
+//           ),
+//         );
+//         return;
+//       }
+//       setState(() {
+//         _speechAvailable = true;
+//       });
+//     }
+
+//     // Ensure mic permission
+//     final ok = await _ensureMicPermission();
+//     if (!ok) return;
+
+//     // Reset flow
+//     await _speech.stop();
+//     await _tts.stop();
+
+//     setState(() {
+//       _messages.clear();
+//       _answers.clear();
+//       _currentQuestionIndex = 0;
+//       _surveyRunning = true;
+//       _liveTranscript = '';
+//     });
+
+//     _messages.add(
+//       ChatMessage(
+//         id: 'intro_${DateTime.now().millisecondsSinceEpoch}',
+//         role: ChatRole.bot,
+//         text: 'Great! Let\'s get started. I will ask you some questions now.',
+//         ts: DateTime.now(),
+//       ),
+//     );
+
+//     _scrollToBottom();
+//     await Future.delayed(const Duration(milliseconds: 600));
+//     await _askCurrentQuestion();
+//   }
+
+//   Future<void> _askCurrentQuestion() async {
+//     if (_currentQuestionIndex < 0 ||
+//         _currentQuestionIndex >= kSurveyQuestions.length) {
+//       return;
+//     }
+
+//     final q = kSurveyQuestions[_currentQuestionIndex];
+
+//     final botMessage = ChatMessage(
+//       id: 'q_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
+//       role: ChatRole.bot,
+//       text: q,
+//       ts: DateTime.now(),
+//     );
+
+//     setState(() {
+//       _messages.add(botMessage);
+//       _speakingId = botMessage.id;
+//     });
+//     _scrollToBottom();
+
+//     _awaitingAnswerAfterTts = true; // when TTS completes, we start listening
+//     await _tts.speak(q);
+//   }
+
+//   Future<void> _startListeningForAnswer() async {
+//     if (!_speechAvailable) return;
+
+//     final ok = await _ensureMicPermission();
+//     if (!ok) return;
+
+//     _liveTranscript = '';
+//     setState(() {
+//       _listening = true;
+//     });
+
+//     await _speech.listen(
+//       onResult: (result) {
+//         if (!mounted) return;
+//         setState(() {
+//           _liveTranscript = result.recognizedWords;
+//         });
+
+//         if (result.finalResult) {
+//           _handleFinalTranscript(result.recognizedWords.trim());
+//         }
+//       },
+//       listenFor: const Duration(seconds: 15),
+//       pauseFor: const Duration(seconds: 4),
+//       partialResults: true,
+//       localeId: 'en_US',
+//     );
+//   }
+
+//   Future<void> _handleFinalTranscript(String text) async {
+//     await _speech.stop();
+//     if (!mounted) return;
+
+//     setState(() {
+//       _listening = false;
+//     });
+
+//     if (text.isEmpty) {
+//       // If nothing captured, just re-ask same question
+//       _messages.add(
+//         ChatMessage(
+//           id: 'empty_${DateTime.now().millisecondsSinceEpoch}',
+//           role: ChatRole.bot,
+//           text: 'I could not hear you clearly. Please answer again.',
+//           ts: DateTime.now(),
+//         ),
+//       );
+//       _scrollToBottom();
+//       await Future.delayed(const Duration(milliseconds: 500));
+//       await _askCurrentQuestion();
+//       return;
+//     }
+
+//     // Save answer
+//     _answers[_currentQuestionIndex] = text;
+
+//     // Add user message to chat
+//     final userMessage = ChatMessage(
+//       id: 'a_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
+//       role: ChatRole.user,
+//       text: text,
+//       ts: DateTime.now(),
+//     );
+//     setState(() {
+//       _messages.add(userMessage);
+//       _liveTranscript = '';
+//     });
+//     _scrollToBottom();
+
+//     // Move to next question
+//     _currentQuestionIndex++;
+//     if (_currentQuestionIndex < kSurveyQuestions.length) {
+//       await Future.delayed(const Duration(milliseconds: 700));
+//       await _askCurrentQuestion();
+//     } else {
+//       // Survey complete
+//       setState(() {
+//         _surveyRunning = false;
+//       });
+
+//       final botDone = ChatMessage(
+//         id: 'done_${DateTime.now().millisecondsSinceEpoch}',
+//         role: ChatRole.bot,
+//         text:
+//             'Thank you for your time and feedback on Mezan voice survey. '
+//             'Your responses are recorded.',
+//         ts: DateTime.now(),
+//       );
+//       setState(() {
+//         _messages.add(botDone);
+//       });
+//       _scrollToBottom();
+//       await _tts.speak(
+//         'Thank you for your time and feedback. Your responses are recorded.',
+//       );
+//     }
+//   }
+
+//   /* ---------- UI ---------- */
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: Container(
+//         // Gradient background
+//         decoration: const BoxDecoration(
+//           gradient: LinearGradient(
+//             colors: [Color(0xFF020617), Color(0xFF111827), Color(0xFF1F2937)],
+//             begin: Alignment.topLeft,
+//             end: Alignment.bottomRight,
+//           ),
+//         ),
+//         child: Stack(
+//           children: [
+//             // Soft blurred blobs behind
+//             Positioned(
+//               top: -80,
+//               left: -40,
+//               child: _Blob(
+//                 color: const Color(0xFFEC4899).withOpacity(0.35),
+//                 size: 220,
+//               ),
+//             ),
+//             Positioned(
+//               bottom: -60,
+//               right: -30,
+//               child: _Blob(
+//                 color: const Color(0xFF8B5CF6).withOpacity(0.4),
+//                 size: 260,
+//               ),
+//             ),
+//             SafeArea(
+//               child: Center(
+//                 child: ConstrainedBox(
+//                   constraints: const BoxConstraints(maxWidth: 900),
+//                   child: Padding(
+//                     padding: const EdgeInsets.all(16.0),
+//                     child: Column(
+//                       children: [
+//                         // HEADER
+//                         Glass(
+//                           radius: 20,
+//                           padding: const EdgeInsets.symmetric(
+//                             horizontal: 18,
+//                             vertical: 14,
+//                           ),
+//                           child: Row(
+//                             children: [
+//                               // Container(
+//                               //   width: 38,
+//                               //   height: 38,
+//                               //   decoration: BoxDecoration(
+//                               //     shape: BoxShape.circle,
+//                               //     gradient: const LinearGradient(
+//                               //       colors: [_kAccent, _kAccent2],
+//                               //     ),
+//                               //     boxShadow: [
+//                               //       BoxShadow(
+//                               //         color: _kAccent.withOpacity(0.5),
+//                               //         blurRadius: 18,
+//                               //         offset: const Offset(0, 6),
+//                               //       )
+//                               //     ],
+//                               //   ),
+//                               //   child: const Icon(
+//                               //     Icons.local_cafe_rounded,
+//                               //     size: 20,
+//                               //     color: Colors.white,
+//                               //   ),
+//                               // ),
+//                               const SizedBox(width: 10),
+//                               const Column(
+//                                 crossAxisAlignment: CrossAxisAlignment.start,
+//                                 children: [
+//                                   Text(
+//                                     'Mezan voice survey',
+//                                     style: TextStyle(
+//                                       fontSize: 17,
+//                                       fontWeight: FontWeight.w700,
+//                                       color: _kText,
+//                                     ),
+//                                   ),
+//                                   SizedBox(height: 2),
+//                                   Text(
+//                                     'Answer each question using your voice.',
+//                                     style: TextStyle(
+//                                       fontSize: 12,
+//                                       color: _kMuted,
+//                                     ),
+//                                   ),
+//                                 ],
+//                               ),
+//                               const Spacer(),
+//                               IconButton(
+//                                 tooltip: 'Reset survey',
+//                                 onPressed: () {
+//                                   setState(() {
+//                                     _messages.clear();
+//                                     _answers.clear();
+//                                     _currentQuestionIndex = -1;
+//                                     _surveyRunning = false;
+//                                     _liveTranscript = '';
+//                                   });
+//                                   _seedWelcome();
+//                                 },
+//                                 icon: const Icon(
+//                                   Icons.refresh_rounded,
+//                                   color: _kMuted,
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                         const SizedBox(height: 14),
+
+//                         // MAIN GLASS CHAT CARD
+//                         Expanded(
+//                           child: Glass(
+//                             radius: 26,
+//                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+//                             child: Column(
+//                               children: [
+//                                 // Chat list
+//                                 Expanded(
+//                                   child: ListView.builder(
+//                                     controller: _scroll,
+//                                     padding: const EdgeInsets.only(bottom: 8),
+//                                     itemCount:
+//                                         _messages.length +
+//                                         (_listening &&
+//                                                 _liveTranscript.isNotEmpty
+//                                             ? 1
+//                                             : 0),
+//                                     itemBuilder: (context, index) {
+//                                       // extra live transcript bubble
+//                                       if (_listening &&
+//                                           _liveTranscript.isNotEmpty &&
+//                                           index == _messages.length) {
+//                                         final liveMsg = ChatMessage(
+//                                           id: 'live',
+//                                           role: ChatRole.user,
+//                                           text: _liveTranscript,
+//                                           ts: DateTime.now(),
+//                                         );
+//                                         return Column(
+//                                           crossAxisAlignment:
+//                                               CrossAxisAlignment.end,
+//                                           children: [
+//                                             _ChatBubble(
+//                                               message: liveMsg,
+//                                               isSpeaking: false,
+//                                               onCopy: null,
+//                                               onSpeak: null,
+//                                               isLive: true,
+//                                             ),
+//                                             const SizedBox(height: 8),
+//                                           ],
+//                                         );
+//                                       }
+
+//                                       final m = _messages[index];
+//                                       final isUser = m.role == ChatRole.user;
+
+//                                       return Column(
+//                                         crossAxisAlignment: isUser
+//                                             ? CrossAxisAlignment.end
+//                                             : CrossAxisAlignment.start,
+//                                         children: [
+//                                           Align(
+//                                             alignment: isUser
+//                                                 ? Alignment.centerRight
+//                                                 : Alignment.centerLeft,
+//                                             child: _ChatBubble(
+//                                               message: m,
+//                                               isSpeaking: _speakingId == m.id,
+//                                               onCopy: () => Clipboard.setData(
+//                                                 ClipboardData(text: m.text),
+//                                               ),
+//                                               onSpeak: m.role == ChatRole.bot
+//                                                   ? () async {
+//                                                       if (_speakingId == m.id) {
+//                                                         await _tts.stop();
+//                                                         setState(() {
+//                                                           _speakingId = null;
+//                                                         });
+//                                                       } else {
+//                                                         await _tts.stop();
+//                                                         setState(() {
+//                                                           _speakingId = m.id;
+//                                                         });
+//                                                         await _tts.speak(
+//                                                           m.text,
+//                                                         );
+//                                                       }
+//                                                     }
+//                                                   : null,
+//                                             ),
+//                                           ),
+//                                           const SizedBox(height: 8),
+//                                         ],
+//                                       );
+//                                     },
+//                                   ),
+//                                 ),
+
+//                                 const SizedBox(height: 8),
+
+//                                 // Listening indicator
+//                                 if (_listening)
+//                                   Row(
+//                                     mainAxisAlignment: MainAxisAlignment.center,
+//                                     children: const [
+//                                       Icon(
+//                                         Icons.mic_rounded,
+//                                         size: 18,
+//                                         color: _kAccent,
+//                                       ),
+//                                       SizedBox(width: 6),
+//                                       Text(
+//                                         'Listening… please speak your answer',
+//                                         style: TextStyle(
+//                                           fontSize: 12,
+//                                           color: _kText,
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 if (_listening) const SizedBox(height: 12),
+
+//                                 // START / RESTART BUTTON
+//                                 Glass(
+//                                   radius: 18,
+//                                   padding: const EdgeInsets.symmetric(
+//                                     horizontal: 12,
+//                                     vertical: 8,
+//                                   ),
+//                                   child: Row(
+//                                     children: [
+//                                       Expanded(
+//                                         child: Text(
+//                                           _surveyRunning
+//                                               ? 'Survey in progress…'
+//                                               : 'Tap Start to begin the voice survey.',
+//                                           style: const TextStyle(
+//                                             fontSize: 12,
+//                                             color: _kMuted,
+//                                           ),
+//                                         ),
+//                                       ),
+//                                       const SizedBox(width: 8),
+//                                       Container(
+//                                         decoration: BoxDecoration(
+//                                           gradient: const LinearGradient(
+//                                             colors: [_kAccent, _kAccent2],
+//                                           ),
+//                                           borderRadius: BorderRadius.circular(
+//                                             999,
+//                                           ),
+//                                           boxShadow: [
+//                                             BoxShadow(
+//                                               color: _kAccent.withOpacity(0.6),
+//                                               blurRadius: 14,
+//                                               offset: const Offset(0, 4),
+//                                             ),
+//                                           ],
+//                                         ),
+//                                         child: TextButton.icon(
+//                                           onPressed: _surveyRunning
+//                                               ? null
+//                                               : _startSurvey,
+//                                           icon: const Icon(
+//                                             Icons.play_arrow_rounded,
+//                                             color: Colors.white,
+//                                             size: 18,
+//                                           ),
+//                                           label: const Text(
+//                                             'Start',
+//                                             style: TextStyle(
+//                                               color: Colors.white,
+//                                               fontWeight: FontWeight.w700,
+//                                             ),
+//                                           ),
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// /* ---------- BUBBLES ---------- */
+
+// class _ChatBubble extends StatelessWidget {
+//   const _ChatBubble({
+//     required this.message,
+//     required this.isSpeaking,
+//     this.onCopy,
+//     this.onSpeak,
+//     this.isLive = false,
+//   });
+
+//   final ChatMessage message;
+//   final bool isSpeaking;
+//   final VoidCallback? onCopy;
+//   final VoidCallback? onSpeak;
+//   final bool isLive;
+
+//   bool get isUser => message.role == ChatRole.user;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (isUser) {
+//       return Container(
+//         constraints: const BoxConstraints(maxWidth: 600),
+//         padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+//         decoration: BoxDecoration(
+//           gradient: LinearGradient(
+//             colors: isLive
+//                 ? [const Color(0xFFEC4899).withOpacity(0.7), _kAccent2]
+//                 : [_kAccent, _kAccent2],
+//             begin: Alignment.topLeft,
+//             end: Alignment.bottomRight,
+//           ),
+//           borderRadius: const BorderRadius.only(
+//             topLeft: Radius.circular(20),
+//             topRight: Radius.circular(4),
+//             bottomLeft: Radius.circular(20),
+//             bottomRight: Radius.circular(20),
+//           ),
+//           boxShadow: [
+//             BoxShadow(
+//               color: _kAccent.withOpacity(0.6),
+//               blurRadius: 18,
+//               offset: const Offset(0, 6),
+//             ),
+//           ],
+//         ),
+//         child: SelectableText(
+//           message.text,
+//           style: const TextStyle(
+//             color: Colors.white,
+//             fontSize: 14.5,
+//             height: 1.35,
+//           ),
+//         ),
+//       );
+//     }
+
+//     return Glass(
+//       radius: 18,
+//       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SelectableText(
+//             message.text,
+//             style: const TextStyle(color: _kText, fontSize: 14.5, height: 1.35),
+//           ),
+//           const SizedBox(height: 6),
+//           Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               if (onCopy != null)
+//                 _MiniIconButton(
+//                   icon: Icons.copy_rounded,
+//                   label: 'Copy',
+//                   onTap: onCopy!,
+//                 ),
+//               if (onSpeak != null) const SizedBox(width: 4),
+//               if (onSpeak != null)
+//                 _MiniIconButton(
+//                   icon: isSpeaking
+//                       ? Icons.stop_rounded
+//                       : Icons.volume_up_rounded,
+//                   label: isSpeaking ? 'Stop' : 'Listen',
+//                   onTap: onSpeak!,
+//                 ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _MiniIconButton extends StatelessWidget {
+//   const _MiniIconButton({
+//     required this.icon,
+//     required this.label,
+//     required this.onTap,
+//   });
+
+//   final IconData icon;
+//   final String label;
+//   final VoidCallback onTap;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return InkWell(
+//       onTap: onTap,
+//       borderRadius: BorderRadius.circular(999),
+//       child: Padding(
+//         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+//         child: Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             Icon(icon, size: 16, color: _kMuted),
+//             const SizedBox(width: 4),
+//             Text(label, style: const TextStyle(fontSize: 11, color: _kMuted)),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _Blob extends StatelessWidget {
+//   const _Blob({required this.color, required this.size});
+
+//   final Color color;
+//   final double size;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       width: size,
+//       height: size,
+//       decoration: BoxDecoration(
+//         shape: BoxShape.circle,
+//         color: color,
+//         boxShadow: [
+//           BoxShadow(
+//             color: color.withOpacity(0.7),
+//             blurRadius: 60,
+//             spreadRadius: 10,
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
