@@ -34,8 +34,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/* ---------- MODELS ---------- */
-
 enum ChatRole { user, bot }
 
 class ChatMessage {
@@ -52,10 +50,7 @@ class ChatMessage {
   });
 }
 
-/* ---------- SURVEY QUESTIONS (phone, name, gender, etc.) ---------- */
-
 const List<String> kSurveyQuestions = [
-
   'What is your name?',
   'What is your phone number?',
   'Which city do you live in?',
@@ -63,20 +58,13 @@ const List<String> kSurveyQuestions = [
   'What is your profession?',
 ];
 
-
 const _kText = Color(0xFFE5E7EB);
 const _kMuted = Color(0xFF9CA3AF);
-const _kAccent = Color(0xFFEC4899); 
-const _kAccent2 = Color(0xFF8B5CF6); 
-
+const _kAccent = Color(0xFFEC4899);
+const _kAccent2 = Color(0xFF8B5CF6);
 
 class Glass extends StatelessWidget {
-  const Glass({
-    super.key,
-    required this.child,
-    this.radius = 24,
-    this.padding,
-  });
+  const Glass({super.key, required this.child, this.radius = 24, this.padding});
 
   final Widget child;
   final double radius;
@@ -105,8 +93,6 @@ class Glass extends StatelessWidget {
   }
 }
 
-/* ---------- SCREEN ---------- */
-
 class VoiceAssistantChatScreen extends StatefulWidget {
   const VoiceAssistantChatScreen({super.key});
 
@@ -132,7 +118,6 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   int _currentQuestionIndex = -1;
   String _liveTranscript = '';
 
-  // store final answers here if you need later
   final Map<int, String> _answers = {};
 
   @override
@@ -148,15 +133,14 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       ChatMessage(
         id: 'm0',
         role: ChatRole.bot,
-        text: 'Welcome to Mezan voice survey.\n\n'
+        text:
+            'Welcome to Mezan voice survey.\n\n'
             'Tap the START button below. I will ask you questions one by one. '
             'Answer each question by speaking, and I will write your answers.',
         ts: DateTime.now(),
       ),
     );
   }
-
-  /* ---------- TTS INIT ---------- */
 
   void _initTts() {
     _tts.setLanguage('en-US');
@@ -186,7 +170,6 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
     });
   }
 
-
   Future<void> _initSpeech() async {
     final available = await _speech.initialize(
       onStatus: _onSpeechStatus,
@@ -201,7 +184,6 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   void _onSpeechStatus(String status) {
     debugPrint('🗣️ speech status: $status');
     if (status == 'notListening' && _listening) {
-      // Sometimes we get notListening without finalResult
       setState(() {
         _listening = false;
       });
@@ -254,7 +236,8 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
         builder: (ctx) => AlertDialog(
           title: const Text('Microphone Permission Needed'),
           content: const Text(
-              'Please enable microphone permission in app settings to use voice answers.'),
+            'Please enable microphone permission in app settings to use voice answers.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -281,9 +264,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
 
     if (!mounted) return false;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Microphone permission denied.'),
-      ),
+      const SnackBar(content: Text('Microphone permission denied.')),
     );
     return false;
   }
@@ -449,7 +430,8 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       final botDone = ChatMessage(
         id: 'done_${DateTime.now().millisecondsSinceEpoch}',
         role: ChatRole.bot,
-        text: 'Thank you for your time and feedback on Mezan voice survey. '
+        text:
+            'Thank you for your time and feedback on Mezan voice survey. '
             'Your responses are recorded.',
         ts: DateTime.now(),
       );
@@ -458,7 +440,8 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       });
       _scrollToBottom();
       await _tts.speak(
-          'Thank you for your time and feedback. Your responses are recorded.');
+        'Thank you for your time and feedback. Your responses are recorded.',
+      );
     }
   }
 
@@ -471,11 +454,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
         // Gradient background
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF020617),
-              Color(0xFF111827),
-              Color(0xFF1F2937),
-            ],
+            colors: [Color(0xFF020617), Color(0xFF111827), Color(0xFF1F2937)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -595,8 +574,10 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                   child: ListView.builder(
                                     controller: _scroll,
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    itemCount: _messages.length +
-                                        (_listening && _liveTranscript.isNotEmpty
+                                    itemCount:
+                                        _messages.length +
+                                        (_listening &&
+                                                _liveTranscript.isNotEmpty
                                             ? 1
                                             : 0),
                                     itemBuilder: (context, index) {
@@ -627,8 +608,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                       }
 
                                       final m = _messages[index];
-                                      final isUser =
-                                          m.role == ChatRole.user;
+                                      final isUser = m.role == ChatRole.user;
 
                                       return Column(
                                         crossAxisAlignment: isUser
@@ -641,29 +621,25 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                                 : Alignment.centerLeft,
                                             child: _ChatBubble(
                                               message: m,
-                                              isSpeaking:
-                                                  _speakingId == m.id,
+                                              isSpeaking: _speakingId == m.id,
                                               onCopy: () => Clipboard.setData(
                                                 ClipboardData(text: m.text),
                                               ),
-                                              onSpeak: m.role ==
-                                                      ChatRole.bot
+                                              onSpeak: m.role == ChatRole.bot
                                                   ? () async {
-                                                      if (_speakingId ==
-                                                          m.id) {
+                                                      if (_speakingId == m.id) {
                                                         await _tts.stop();
                                                         setState(() {
-                                                          _speakingId =
-                                                              null;
+                                                          _speakingId = null;
                                                         });
                                                       } else {
                                                         await _tts.stop();
                                                         setState(() {
-                                                          _speakingId =
-                                                              m.id;
+                                                          _speakingId = m.id;
                                                         });
-                                                        await _tts
-                                                            .speak(m.text);
+                                                        await _tts.speak(
+                                                          m.text,
+                                                        );
                                                       }
                                                     }
                                                   : null,
@@ -681,11 +657,13 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                 // Listening indicator
                                 if (_listening)
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: const [
-                                      Icon(Icons.mic_rounded,
-                                          size: 18, color: _kAccent),
+                                      Icon(
+                                        Icons.mic_rounded,
+                                        size: 18,
+                                        color: _kAccent,
+                                      ),
                                       SizedBox(width: 6),
                                       Text(
                                         'Listening… please speak your answer',
@@ -724,15 +702,14 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                           gradient: const LinearGradient(
                                             colors: [_kAccent, _kAccent2],
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: _kAccent
-                                                  .withOpacity(0.6),
+                                              color: _kAccent.withOpacity(0.6),
                                               blurRadius: 14,
-                                              offset:
-                                                  const Offset(0, 4),
+                                              offset: const Offset(0, 4),
                                             ),
                                           ],
                                         ),
@@ -796,7 +773,6 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isUser) {
-      // User bubble: gradient pill (lighter if live)
       return Container(
         constraints: const BoxConstraints(maxWidth: 600),
         padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
@@ -819,7 +795,7 @@ class _ChatBubble extends StatelessWidget {
               color: _kAccent.withOpacity(0.6),
               blurRadius: 18,
               offset: const Offset(0, 6),
-            )
+            ),
           ],
         ),
         child: SelectableText(
@@ -833,7 +809,6 @@ class _ChatBubble extends StatelessWidget {
       );
     }
 
-    // Bot bubble: glass card
     return Glass(
       radius: 18,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
@@ -842,11 +817,7 @@ class _ChatBubble extends StatelessWidget {
         children: [
           SelectableText(
             message.text,
-            style: const TextStyle(
-              color: _kText,
-              fontSize: 14.5,
-              height: 1.35,
-            ),
+            style: const TextStyle(color: _kText, fontSize: 14.5, height: 1.35),
           ),
           const SizedBox(height: 6),
           Row(
@@ -898,21 +869,13 @@ class _MiniIconButton extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: _kMuted),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: _kMuted,
-              ),
-            ),
+            Text(label, style: const TextStyle(fontSize: 11, color: _kMuted)),
           ],
         ),
       ),
     );
   }
 }
-
-/* ---------- BACKGROUND BLOB ---------- */
 
 class _Blob extends StatelessWidget {
   const _Blob({required this.color, required this.size});
@@ -939,4 +902,3 @@ class _Blob extends StatelessWidget {
     );
   }
 }
-
