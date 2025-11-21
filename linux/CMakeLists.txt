@@ -1,5 +1,5 @@
 # Project-level configuration.
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_requi(VERSION 3.13)
 project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
@@ -51,8 +51,8 @@ set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
 # System-level dependencies.
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+find_package(PkgConfig REQUI)
+pkg_check_modules(GTK REQUI IMPORTED_TARGET gtk+-3.0)
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
