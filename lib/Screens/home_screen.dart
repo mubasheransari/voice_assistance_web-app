@@ -299,7 +299,7 @@ class HomeScreen extends StatelessWidget {
                 title: 'Prayer times',
                 subtitle: 'Stay on schedule',
                 onTap: () {
-                  Navigator.pushNamed(context, PrayerTimesScreen.routeName);
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
               ),
             ),
