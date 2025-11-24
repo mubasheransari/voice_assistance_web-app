@@ -77,7 +77,7 @@ class HomeScreen extends StatelessWidget {
                   size: 15, color: AppTheme.primary),
               SizedBox(width: 4),
               Text(
-                'Melbourne, AU',
+                'Karachi, Pakistan',
                 style: TextStyle(
                   fontFamily: AppTheme.fontFamily,
                   fontSize: 12.5,
@@ -88,15 +88,15 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      actions: const [
-        Padding(
-          padding: EdgeInsets.only(right: 16),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundImage: AssetImage('assets/avatar.png'),
-          ),
-        ),
-      ],
+      // actions: const [
+      //   Padding(
+      //     padding: EdgeInsets.only(right: 16),
+      //     child: CircleAvatar(
+      //       radius: 18,
+      //       backgroundImage: AssetImage('assets/avatar.png'),
+      //     ),
+      //   ),
+      // ],
     );
   }
 

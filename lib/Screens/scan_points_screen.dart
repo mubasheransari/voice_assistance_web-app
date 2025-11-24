@@ -58,6 +58,7 @@ class _ScanPointsScreenState extends State<ScanPointsScreen> {
           ),
         ),
       );
+      Navigator.of(context).pop();
     }
 
     // Small delay to avoid repeated triggers from same QR
