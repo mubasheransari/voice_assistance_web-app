@@ -1,10 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'dart:ui';
-import 'dart:async';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
 import 'package:voice_assistant_project/Screens/login_screen.dart';
 import 'package:voice_assistant_project/Screens/points_screen.dart';
@@ -13,40 +7,96 @@ import 'package:voice_assistant_project/Screens/signup_screen.dart';
 import 'package:voice_assistant_project/Screens/survey_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
 
+
+final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
+
+
+
 void main() {
-  runApp(const LoyaltyApp//MyApp
-  ());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const RewardApp());
 }
 
-
-
-
-
-class LoyaltyApp extends StatelessWidget {
-  const LoyaltyApp({super.key});
+class RewardApp extends StatelessWidget {
+  const RewardApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: ' Loyalty',
-      theme: AppTheme.lightTheme,
+      title: 'Reward Scanner',
       debugShowCheckedModeBanner: false,
-
-      // 🔴 Start from login
-      initialRoute: '/login',
-
-      routes: {
-        '/login': (_) => const LoginScreen(),
-        '/signup': (_) => const SignupScreen(),
-
-        '/': (_) => const HomeScreen(),
-        '/survey': (_) => const SurveyScreen(),
-        '/points': (_) => const PointsScreen(),
-        '/prayers': (_) => const PrayerTimesScreen(),
-      },
+      theme: ThemeData(
+        fontFamily: 'Poppins',
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
     );
   }
 }
+
+
+// void main() {
+//   runApp(const VoiceRewardsApp());
+// }
+
+// class VoiceRewardsApp extends StatelessWidget {
+//   const VoiceRewardsApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Rewards Scanner',
+//       debugShowCheckedModeBanner: false,
+//       theme: AppTheme.lightTheme,
+//       initialRoute: LoginScreen.routeName,
+//       routes: {
+//         LoginScreen.routeName: (_) => const LoginScreen(),
+//         SignupScreen.routeName: (_) => const SignupScreen(),
+//         HomeScreen.routeName: (_) => const HomeScreen(),
+//         PointsScreen.routeName: (_) => const PointsScreen(),
+//         SurveyScreen.routeName: (_) => const SurveyScreen(),
+//         PrayerTimesScreen.routeName: (_) => const PrayerTimesScreen(),
+//       },
+//     );
+//   }
+// }
+
+
+// void main() {
+//   runApp(const LoyaltyApp//MyApp
+//   ());
+// }
+
+
+
+
+
+// class LoyaltyApp extends StatelessWidget {
+//   const LoyaltyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: ' Loyalty',
+//       theme: AppTheme.lightTheme,
+//       debugShowCheckedModeBanner: false,
+
+//       // 🔴 Start from login
+//       initialRoute: '/login',
+
+//       routes: {
+//         '/login': (_) => const LoginScreen(),
+//         '/signup': (_) => const SignupScreen(),
+
+//         '/': (_) => const HomeScreen(),
+//         '/survey': (_) => const SurveyScreen(),
+//         '/points': (_) => const PointsScreen(),
+//         '/prayers': (_) => const PrayerTimesScreen(),
+//       },
+//     );
+//   }
+// }
 
 
 
