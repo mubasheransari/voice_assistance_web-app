@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:voice_assistant_project/Screens/islamic_calender_screen.dart';
 import 'package:voice_assistant_project/Screens/scan_points_screen.dart';
 import 'package:voice_assistant_project/Screens/send_points_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
@@ -262,6 +263,32 @@ class HomeScreen extends StatelessWidget {
                 subtitle: 'Earn bonus pts',
                 onTap: () {
                   Navigator.pushNamed(context, SurveyScreen.routeName);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.wb_twighlight,
+                title: 'Prayer times',
+                subtitle: 'Stay on schedule',
+                onTap: () {
+                  Navigator.pushNamed(context, PrayerTimesScreen.routeName);
+                },
+              ),
+            ),
+          ],
+        ),
+           const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickTile(
+                icon: Icons.calendar_month,
+                title: 'Calendar',
+                subtitle: 'Islamic Calendar',
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=> IslamicCalendarScreen()));
                 },
               ),
             ),

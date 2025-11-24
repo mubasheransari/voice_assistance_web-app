@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hijri/hijri_calendar.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
-import 'package:voice_assistant_project/Screens/login_screen.dart';
-import 'package:voice_assistant_project/Screens/points_screen.dart';
-import 'package:voice_assistant_project/Screens/prayer_times_screen.dart';
-import 'package:voice_assistant_project/Screens/signup_screen.dart';
-import 'package:voice_assistant_project/Screens/survey_screen.dart';
-import 'package:voice_assistant_project/Theme/theme.dart';
+
 
 
 final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
 
 
 
-void main() {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+    await HijriCalendar.setLocal("en"); // or "en"
   runApp(const RewardApp());
 }
 
