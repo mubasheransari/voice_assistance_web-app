@@ -170,41 +170,65 @@ class PrayerTimesScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Expanded(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedCity,
-                          icon: const Icon(Icons.expand_more_rounded),
-                          style: const TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 14.5,
-                            color: Color(0xFF3E1E69),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          items: const [
-                            'Karachi',
-                            'Lahore',
-                            'Islamabad',
-                            'Melbourne',
-                            'Sydney',
-                          ].map((c) {
-                            return DropdownMenuItem<String>(
-                              value: c,
-                              child: Text(c),
-                            );
-                          }).toList(),
-                          onChanged: (v) {
-                            if (v == null) return;
-                            String country = 'Pakistan';
-                            if (v == 'Melbourne' || v == 'Sydney') {
-                              country = 'Australia';
-                            }
-                            onChangeCity(v, country);
-                          },
-                        ),
-                      ),
-                    ),
+                 Expanded(
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    // decoration: BoxDecoration(
+    //   color: const Color(0xFFF5F3FF), // soft lilac background
+    //   borderRadius: BorderRadius.circular(999),
+    //   border: Border.all(
+    //     color: AppTheme.primary.withOpacity(0.18),
+    //     width: 1.2,
+    //   ),
+    // ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        isExpanded: true,
+        value: selectedCity,
+        icon: const Icon(
+          Icons.expand_more_rounded,
+          size: 22,
+          color: AppTheme.primary,
+        ),
+        dropdownColor: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        style: const TextStyle(
+          fontFamily: AppTheme.fontFamily,
+          fontSize: 14.5,
+          color: Color(0xFF3E1E69),
+          fontWeight: FontWeight.w600,
+        ),
+        items: const [
+          'Karachi',
+          'Lahore',
+          'Islamabad'
+        ].map((c) {
+          return DropdownMenuItem<String>(
+            value: c,
+            child: Text(
+              c,
+              style: const TextStyle(
+                fontFamily: AppTheme.fontFamily,
+                fontSize: 14,
+                color: Color(0xFF3E1E69),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (v) {
+          if (v == null) return;
+          String country = 'Pakistan';
+          if (v == 'Melbourne' || v == 'Sydney') {
+            country = 'Australia';
+          }
+          onChangeCity(v, country);
+        },
+      ),
+    ),
+  ),
+)
+
                   ],
                 ),
               ],
