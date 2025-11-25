@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
-
-// assumes AppTheme + rewardPoints exist
-
-import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/main.dart';
-// 👈 where AppTheme is defined
 
 class SendPointsScreen extends StatefulWidget {
   static const String routeName = '/send-points';

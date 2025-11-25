@@ -40,6 +40,8 @@ dependencies:
   mobile_scanner: ^6.0.2
   hijri: ^3.0.0
   http:
+  get_storage:
+  fluttertoast:
 
 dev_dependencies:
   flutter_test:

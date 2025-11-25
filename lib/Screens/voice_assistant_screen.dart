@@ -4,6 +4,14 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:voice_assistant_project/Theme/theme.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+
+
+
+
+
+
 
 
 
@@ -15,7 +23,6 @@ const List<String> kSurveyQuestions = [
   'What is your profession?',
   'Please share your review about Mezan Chai.',
 ];
-
 
 
 enum ChatRole { user, bot }
@@ -34,10 +41,32 @@ class ChatMessage {
   });
 }
 
-const _kText = Color(0xFFE5E7EB);
-const _kMuted = Color(0xFF9CA3AF);
+// ---------------- COLORS (FROM THEME) ----------------
+
+const _kText = Color(0xFF111827);
+const _kMuted = Color(0xFF6B7280);
 const _kAccent = AppTheme.primary;
 const _kAccent2 = AppTheme.accent;
+
+// ---------------- LOYALTY STORAGE (GETSTORAGE) ----------------
+
+class LoyaltyPointsStore {
+  static final GetStorage _box = GetStorage();
+  static const String _key = 'loyalty_points';
+
+  /// Add [delta] points and return the new total.
+  static Future<int> addPoints(int delta) async {
+    final current = _box.read<int>(_key) ?? 0;
+    final updated = current + delta;
+    await _box.write(_key, updated);
+    return updated;
+  }
+
+  /// Optional helper to read current points (sync)
+  static int getPoints() {
+    return _box.read<int>(_key) ?? 0;
+  }
+}
 
 // ---------------- GLASS / CARD WIDGET ----------------
 
@@ -55,7 +84,7 @@ class Glass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // White modern card (no dark blur)
+    // White modern card
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -86,7 +115,6 @@ class PermissionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-    //  backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text(
           'Microphone Permission',
@@ -105,14 +133,14 @@ class PermissionScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(
+            children: [
+              const Icon(
                 Icons.mic_off_rounded,
                 size: 48,
                 color: _kAccent,
               ),
-              SizedBox(height: 16),
-              Text(
+              const SizedBox(height: 16),
+              const Text(
                 'Microphone access is required',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -122,8 +150,8 @@ class PermissionScreen extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
+              const SizedBox(height: 8),
+              const Text(
                 'Please allow microphone permission in app settings so we can listen to your answers.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -132,35 +160,25 @@ class PermissionScreen extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              SizedBox(height: 20),
-              _OpenSettingsButton(),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_rounded),
+                label: const Text('Open App Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OpenSettingsButton extends StatelessWidget {
-  const _OpenSettingsButton();
-
-  Future<void> _openSettings() async {
-    await openAppSettings();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: _openSettings,
-      icon: const Icon(Icons.settings_rounded),
-      label: const Text('Open App Settings'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _kAccent,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
         ),
       ),
     );
@@ -453,6 +471,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       await Future.delayed(const Duration(milliseconds: 700));
       await _askCurrentQuestion();
     } else {
+      // ✅ SURVEY FINISHED
       setState(() {
         _surveyRunning = false;
       });
@@ -472,6 +491,20 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       await _tts.speak(
         'Thank you for your time and feedback. Your responses are recorded.',
       );
+
+      // 🔹 1) Add 20 points via GetStorage
+      await LoyaltyPointsStore.addPoints(20);
+
+      if (!mounted) return;
+
+      // 🔹 2) Toast similar to QR success
+      // Fluttertoast.showToast(
+      //   msg: 'Survey completed! 20 loyalty points added 🎉',
+      //   toastLength: Toast.LENGTH_SHORT,
+      // );
+
+      // 🔹 3) Navigate back to home
+      Navigator.of(context).pop();
     }
   }
 
@@ -480,7 +513,6 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-   //   backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -529,18 +561,18 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                               style: TextStyle(
                                 fontFamily: AppTheme.fontFamily,
                                 fontSize: 17,
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w500,
                                 color: Colors.black,
                               ),
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Complete the Survery to earn pts.',
+                              'Complete the survey to earn points.',
                               style: TextStyle(
                                 fontFamily: AppTheme.fontFamily,
                                 fontSize: 11,
-                                   fontWeight: FontWeight.w400,
-                                color: Colors.black,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.black87,
                               ),
                             ),
                           ],
@@ -663,77 +695,66 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
                                   ),
                                 ),
                               const Spacer(),
+
+                              // Gradient pill button
                               Container(
                                 height: 38,
-  decoration: BoxDecoration(
-    gradient: _surveyRunning 
-        ? const LinearGradient(colors: [Colors.grey, Colors.grey])
-        : const LinearGradient(
-            colors: [_kAccent, _kAccent2],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-    borderRadius: BorderRadius.circular(999),
-    boxShadow: [
-      BoxShadow(
-        color: _kAccent.withOpacity(0.4),
-        blurRadius: 18,
-        offset: const Offset(0, 6),
-      ),
-    ],
-  ),
-  child: ElevatedButton.icon(
-    onPressed: _surveyRunning ? null : () => _startSurvey(),
-    icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-    label: Text(
-      _currentQuestionIndex == 0 ? 'Start Survey' : 'Restart Survey',//textAlign: TextAlign.center,
-      style: const TextStyle(
-        fontFamily: AppTheme.fontFamily,
-        fontWeight: FontWeight.w500,
-        fontSize: 11,
-        color: Colors.white,
-      ),
-    ),
-    style: ElevatedButton.styleFrom(
-      elevation: 0,
-      shadowColor: Colors.transparent,
-      backgroundColor: Colors.transparent, // <-- important
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(999),
-      ),
-    ),
-  ),
-)
-
-                              // ElevatedButton.icon(
-                              //   onPressed:
-                              //       _surveyRunning ? null : () => _startSurvey(),
-                              //   icon: const Icon(Icons.play_arrow_rounded),
-                              //   label: Text(
-                              //     _currentQuestionIndex == 0
-                              //         ? 'Start Survey'
-                              //         : 'Restart Survey',
-                              //     style: const TextStyle(
-                              //       fontFamily: AppTheme.fontFamily,
-                              //       fontWeight: FontWeight.w700,
-                              //     ),
-                              //   ),
-                              //   style: ElevatedButton.styleFrom(
-                              //     backgroundColor: _surveyRunning
-                              //         ? Colors.grey
-                              //         : _kAccent,
-                              //     foregroundColor: Colors.white,
-                              //     padding: const EdgeInsets.symmetric(
-                              //       horizontal: 18,
-                              //       vertical: 10,
-                              //     ),
-                              //     shape: RoundedRectangleBorder(
-                              //       borderRadius: BorderRadius.circular(999),
-                              //     ),
-                              //   ),
-                              // ),
+                                decoration: BoxDecoration(
+                                  gradient: _surveyRunning
+                                      ? const LinearGradient(
+                                          colors: [Colors.grey, Colors.grey],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : const LinearGradient(
+                                          colors: [_kAccent, _kAccent2],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _kAccent.withOpacity(0.4),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton.icon(
+                                  onPressed: _surveyRunning
+                                      ? null
+                                      : () => _startSurvey(),
+                                  icon: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    _currentQuestionIndex == 0
+                                        ? 'Start Survey'
+                                        : 'Restart Survey',
+                                    style: const TextStyle(
+                                      fontFamily: AppTheme.fontFamily,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    shadowColor: Colors.transparent,
+                                    backgroundColor: Colors.transparent,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -912,29 +933,3 @@ class _LiveTranscriptBubble extends StatelessWidget {
   }
 }
 
-// You can still use _Blob later if you want subtle background shapes.
-class _Blob extends StatelessWidget {
-  const _Blob({required this.color, required this.size});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.5),
-            blurRadius: 60,
-            spreadRadius: 10,
-          ),
-        ],
-      ),
-    );
-  }
-}

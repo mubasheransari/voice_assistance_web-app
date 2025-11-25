@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
 
@@ -11,6 +12,7 @@ final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
     await HijriCalendar.setLocal("en"); 
+     await GetStorage.init();
   runApp(const RewardApp());
 }
 

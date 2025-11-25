@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
-import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
-// import your AppTheme where primary, accent, fontFamily are defined
-// import 'app_theme.dart';
+
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -14,7 +10,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  int tab = 0; // 0 = login, 1 = signup
+  int tab = 0; 
 
   final _loginFormKey = GlobalKey<FormState>();
   final _signupFormKey = GlobalKey<FormState>();
