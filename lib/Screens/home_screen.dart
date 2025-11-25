@@ -273,7 +273,7 @@ class HomeScreen extends StatelessWidget {
                 title: 'Prayer times',
                 subtitle: 'Stay on schedule',
                 onTap: () {
-                  Navigator.pushNamed(context, PrayerTimesScreen.routeName);
+                       Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
               ),
             ),
@@ -295,11 +295,11 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _QuickTile(
-                icon: Icons.wb_twighlight,
-                title: 'Prayer times',
-                subtitle: 'Stay on schedule',
+                icon: Icons.person,
+                title: 'Profile',
+                subtitle: 'Profile Details',
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
+                 // Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
               ),
             ),

@@ -7,17 +7,16 @@ plugins {
 
 android {
     namespace = "com.example.voice_assistant_project"
-    compileSdk = flutter.compileSdkVersion
 
     // 🔧 NDK version needed by flutter_tts & speech_to_text
     ndkVersion = "27.0.12077973"
 
+    compileSdk = 36  // ⬅️ change from 35 to 36
+
     defaultConfig {
-        applicationId = "com.example.voice_assistant_project"
-
-        minSdk = flutter.minSdkVersion
-        targetSdk = 34
-
+        applicationId = "com.example.voice_assistance_web_app" // your id
+        minSdk = 23      // ⬅️ change from 21 to at least 23
+        targetSdk = 36   // ⬅️ good practice to match compileSdk
         versionCode = 1
         versionName = "1.0"
     }

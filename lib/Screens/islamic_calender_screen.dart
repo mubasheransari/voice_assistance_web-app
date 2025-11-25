@@ -168,7 +168,7 @@ class _IslamicCalendarScreenState extends State<IslamicCalendarScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Today (Hijri): '
+                  'Today: '
                   '${_todayHijri.hDay} $todayMonthName ${_todayHijri.hYear} AH',
                   style: const TextStyle(
                     fontFamily: AppTheme.fontFamily,
