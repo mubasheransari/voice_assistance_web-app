@@ -260,7 +260,7 @@ class HomeScreen extends StatelessWidget {
               child: _QuickTile(
                 icon: Icons.mic_none_rounded,
                 title: 'Survey',
-                subtitle: 'Earn bonus pts',
+                subtitle: 'Survey to earn bonus points',
                 onTap: () {
                   Navigator.pushNamed(context, SurveyScreen.routeName);
                 },
@@ -297,7 +297,7 @@ class HomeScreen extends StatelessWidget {
               child: _QuickTile(
                 icon: Icons.person,
                 title: 'Profile',
-                subtitle: 'Profile Details',
+                subtitle: 'View Profile Details',
                 onTap: () {
                  // Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
