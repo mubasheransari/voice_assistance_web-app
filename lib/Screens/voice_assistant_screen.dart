@@ -5,14 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:voice_assistant_project/Theme/theme.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-
-
-
-
-
-
-
 
 
 const List<String> kSurveyQuestions = [
@@ -68,7 +60,6 @@ class LoyaltyPointsStore {
   }
 }
 
-// ---------------- GLASS / CARD WIDGET ----------------
 
 class Glass extends StatelessWidget {
   const Glass({
@@ -492,23 +483,12 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
         'Thank you for your time and feedback. Your responses are recorded.',
       );
 
-      // 🔹 1) Add 20 points via GetStorage
       await LoyaltyPointsStore.addPoints(20);
 
       if (!mounted) return;
-
-      // 🔹 2) Toast similar to QR success
-      // Fluttertoast.showToast(
-      //   msg: 'Survey completed! 20 loyalty points added 🎉',
-      //   toastLength: Toast.LENGTH_SHORT,
-      // );
-
-      // 🔹 3) Navigate back to home
       Navigator.of(context).pop();
     }
   }
-
-  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
