@@ -42,6 +42,9 @@ dependencies:
   http:
   get_storage:
   fluttertoast:
+  flutter_bloc:
+  bloc:
+  equatable:
 
 dev_dependencies:
   flutter_test:

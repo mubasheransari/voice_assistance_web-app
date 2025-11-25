@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:hijri/hijri_calendar.dart';
+import 'package:voice_assistant_project/Bloc/global_bloc.dart';
+import 'package:voice_assistant_project/Bloc/global_event.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
+import 'package:voice_assistant_project/services/prayer_times_service.dart';
+
 
 
 
@@ -9,10 +14,13 @@ final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
 
 
 
-void main() async{
+
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-    await HijriCalendar.setLocal("en"); 
-     await GetStorage.init();
+  await HijriCalendar.setLocal("en");
+  await GetStorage.init();
+
   runApp(const RewardApp());
 }
 
@@ -21,18 +29,45 @@ class RewardApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Reward Scanner',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Poppins',
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
-        useMaterial3: true,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<GlobalBloc>(
+          create: (_) => GlobalBloc(PrayerTimesService())
+            ..add(const LoadPrayerTimes()), // initial load
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Reward Scanner',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          fontFamily: 'Poppins',
+          colorScheme:
+              ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
+          useMaterial3: true,
+        ),
+        home: const HomeScreen(),
       ),
-      home: const HomeScreen(),
     );
   }
 }
+
+// class RewardApp extends StatelessWidget {
+//   const RewardApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Reward Scanner',
+//       debugShowCheckedModeBanner: false,
+//       theme: ThemeData(
+//         fontFamily: 'Poppins',
+//         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
+//         useMaterial3: true,
+//       ),
+//       home: const HomeScreen(),
+//     );
+//   }
+// }
 
 
 // void main() {
