@@ -259,7 +259,7 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: _QuickTile(
                 icon: Icons.mic_none_rounded,
-                title: 'Voice survey',
+                title: 'Survey',
                 subtitle: 'Earn bonus pts',
                 onTap: () {
                   Navigator.pushNamed(context, SurveyScreen.routeName);
