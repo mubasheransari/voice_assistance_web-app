@@ -10,7 +10,7 @@ final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
-    await HijriCalendar.setLocal("en"); // or "en"
+    await HijriCalendar.setLocal("en"); 
   runApp(const RewardApp());
 }
 

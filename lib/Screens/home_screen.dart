@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/Screens/islamic_calender_screen.dart';
 import 'package:voice_assistant_project/Screens/scan_points_screen.dart';
 import 'package:voice_assistant_project/Screens/send_points_screen.dart';
+import 'package:voice_assistant_project/Screens/voice_assistant_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
 
 import 'package:flutter/material.dart';
@@ -262,7 +263,8 @@ class HomeScreen extends StatelessWidget {
                 title: 'Survey',
                 subtitle: 'Survey to earn bonus points',
                 onTap: () {
-                  Navigator.pushNamed(context, SurveyScreen.routeName);
+               Navigator.push(context, MaterialPageRoute(builder: (context)=> VoiceAssistantChatScreen()));
+
                 },
               ),
             ),
