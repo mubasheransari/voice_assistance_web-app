@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -49,25 +49,143 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar() {
+AppBar _buildAppBar() {
+  return AppBar(
+    backgroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    toolbarHeight: 95,
+    titleSpacing: 16,
+    title: Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Brand Icon Circle
+          // Container(
+          //   width: 42,
+          //   height: 42,
+          //   decoration: BoxDecoration(
+          //     shape: BoxShape.circle,
+          //     gradient: const LinearGradient(
+          //       colors: [AppTheme.primary, AppTheme.accent],
+          //       begin: Alignment.topLeft,
+          //       end: Alignment.bottomRight,
+          //     ),
+          //     boxShadow: [
+          //       BoxShadow(
+          //         color: AppTheme.primary.withOpacity(0.3),
+          //         blurRadius: 16,
+          //         offset: const Offset(0, 6),
+          //       ),
+          //     ],
+          //   ),
+          //   child: const Icon(
+          //     Icons.local_cafe_rounded,
+          //     color: Colors.white,
+          //     size: 22,
+          //   ),
+          // ),
+
+          const SizedBox(width: 12),
+
+          // TEXT CONTENT
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                // English Tagline
+                Text(
+                  'Loved in Every Home, Trusted Across the Nation!',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: 14,
+                         color:Colors.black, // color: AppTheme.primary,
+                    fontWeight: FontWeight.w400,
+                    height: 1.25,
+                  ),
+                ),
+
+                SizedBox(height: 5),
+
+                // Urdu Tagline
+                Text(
+                  'ہر گھر کی پسند، پوری قوم کا اعتماد',
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: 15,
+                    color:Colors.red,
+                  //  color: AppTheme.primary,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+
+                SizedBox(height: 8),
+
+                // Location row
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_rounded,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Karachi, Pakistan',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontFamily,
+                        fontSize: 12.5,
+                        color: Color(0xFF75748A),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+
+    // Subtle divider line at bottom
+    bottom: PreferredSize(
+      preferredSize: const Size.fromHeight(1),
+      child: Container(
+        height: 1,
+        color: const Color(0xFFE5E7EB),
+      ),
+    ),
+  );
+}
+
+/*  AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      titleSpacing: 16,
+      titleSpacing: 19,
+        toolbarHeight: 80,  
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
+          SizedBox(height: 5),
           Text(
-            'Good to see you 👋',
+         'Loved in Every Home, Trusted Across the Nation\nہر گھر کی پسند، پوری قوم کا اعتماد', //  'Good to see you 👋',
             style: TextStyle(
               fontFamily: AppTheme.fontFamily,
-              fontSize: 16,
+              fontSize: 14,
+             // color:Colors.black87,
               color: AppTheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 3),
+          SizedBox(height: 9),
           Row(
             children: [
               Icon(Icons.location_on_rounded,
@@ -95,7 +213,7 @@ class HomeScreen extends StatelessWidget {
       //   ),
       // ],
     );
-  }
+  }*/
 
   Widget _buildSearch() {
     return Material(

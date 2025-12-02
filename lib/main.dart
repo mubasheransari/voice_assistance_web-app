@@ -5,6 +5,7 @@ import 'package:hijri/hijri_calendar.dart';
 import 'package:voice_assistant_project/Bloc/global_bloc.dart';
 import 'package:voice_assistant_project/Bloc/global_event.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
+import 'package:voice_assistant_project/Screens/login_screen.dart';
 import 'package:voice_assistant_project/services/prayer_times_service.dart';
 
 
@@ -12,7 +13,13 @@ import 'package:voice_assistant_project/services/prayer_times_service.dart';
 
 final ValueNotifier<int> rewardPoints = ValueNotifier<int>(120);
 
-
+// features implemented so far is scanning a QR and adding points to total reward points.
+// sending points to other users of the app (family & friends) through unique key that every user have.
+// namaz timings according to cities changes dynamically.
+// islamic calender.
+// need locations that our tea is selling throughout the counttry with name and exact location (lat,lng)
+// where how can we these points to use these reward points.
+// in app ecommerce store & tie up with marts is the solution of reedming points from the app. 
 
 
 
@@ -45,7 +52,7 @@ class RewardApp extends StatelessWidget {
               ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
           useMaterial3: true,
         ),
-        home: const HomeScreen(),
+        home: const AuthScreen() //HomeScreen(),
       ),
     );
   }

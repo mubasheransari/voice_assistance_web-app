@@ -6,6 +6,17 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:voice_assistant_project/Theme/theme.dart';
 import 'package:get_storage/get_storage.dart';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+// import your theme
+// import 'app_theme.dart';
+
+// ---------------- SURVEY QUESTIONS ----------------
 
 const List<String> kSurveyQuestions = [
   'What is your phone number?',
@@ -15,7 +26,6 @@ const List<String> kSurveyQuestions = [
   'What is your profession?',
   'Please share your review about Mezan Chai.',
 ];
-
 
 enum ChatRole { user, bot }
 
@@ -60,6 +70,7 @@ class LoyaltyPointsStore {
   }
 }
 
+// ---------------- GLASS CARD ----------------
 
 class Glass extends StatelessWidget {
   const Glass({
@@ -203,6 +214,9 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   int _currentQuestionIndex = 0;
   final Map<int, String> _answers = {};
 
+  // set your default language here
+  static const String _speechLocaleId = 'ur_PK'; // or 'en_US'
+
   @override
   void initState() {
     super.initState();
@@ -224,21 +238,24 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
   }
 
   void _initTts() {
-    _tts.setLanguage('en-US');
+    _tts.setLanguage('en-US'); // This is just for TTS voice language
     _tts.setSpeechRate(0.5);
     _tts.setPitch(1.0);
 
     _tts.setStartHandler(() {
+      if (!mounted) return;
       setState(() {});
     });
 
     _tts.setCompletionHandler(() {
+      if (!mounted) return;
       setState(() {
         _speakingId = null;
       });
     });
 
     _tts.setErrorHandler((msg) {
+      if (!mounted) return;
       setState(() {
         _speakingId = null;
       });
@@ -250,16 +267,50 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       final available = await _speech.initialize(
         onStatus: (status) {
           debugPrint('Speech status: $status');
+          if (!mounted) return;
+          // keep listening flag in sync
+          setState(() {
+            _listening = status == 'listening';
+          });
         },
-        onError: (error) {
+        onError: (error) async {
           debugPrint('Speech error: $error');
+          if (!mounted) return;
+
+          setState(() {
+            _listening = false;
+          });
+
+          // handle "no match" nicely
+          if (error.errorMsg == 'error_no_match') {
+            final warn = ChatMessage(
+              id: 'no_match_${DateTime.now().millisecondsSinceEpoch}',
+              role: ChatRole.bot,
+              text:
+                  'I could not understand your answer. Please speak again clearly after the beep.',
+              ts: DateTime.now(),
+            );
+
+            setState(() {
+              _messages.add(warn);
+            });
+            _scrollToBottom();
+
+            // small delay, then retry same question
+            await Future.delayed(const Duration(seconds: 1));
+            if (!mounted || !_surveyRunning) return;
+            await _askCurrentQuestion();
+          }
         },
       );
+
+      if (!mounted) return;
       setState(() {
         _speechAvailable = available;
       });
     } catch (e) {
       debugPrint('Speech init error: $e');
+      if (!mounted) return;
       setState(() {
         _speechAvailable = false;
       });
@@ -379,6 +430,8 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
     await _tts.stop();
     await _tts.speak(q);
 
+    // small delay before starting mic so TTS doesn't overlap
+    await Future.delayed(const Duration(seconds: 1));
     await _startListeningForAnswer();
   }
 
@@ -393,6 +446,9 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
       _listening = true;
     });
 
+    // ensure previous session stopped
+    await _speech.stop();
+
     await _speech.listen(
       onResult: (result) {
         if (!mounted) return;
@@ -404,11 +460,21 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
           _handleFinalTranscript(result.recognizedWords.trim());
         }
       },
-      listenFor: const Duration(seconds: 40),
-      pauseFor: const Duration(seconds: 6),
+
+      // ✅ LONGER LISTENING WINDOW
+      listenFor: const Duration(minutes: 2),
+
+      // ✅ LONGER SILENCE TOLERANCE
+      pauseFor: const Duration(seconds: 15),
+
       partialResults: true,
-      localeId: 'en_US',
+
+      // ✅ SET YOUR LANGUAGE HERE (Urdu / English)
+      localeId: _speechLocaleId, // 'ur_PK' or 'en_US'
+
       cancelOnError: true,
+
+      // Dictation = more free continuous speech
       listenMode: stt.ListenMode.dictation,
     );
   }
@@ -483,6 +549,7 @@ class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
         'Thank you for your time and feedback. Your responses are recorded.',
       );
 
+      // add 20 pts
       await LoyaltyPointsStore.addPoints(20);
 
       if (!mounted) return;
@@ -912,4 +979,1916 @@ class _LiveTranscriptBubble extends StatelessWidget {
     );
   }
 }
+
+
+/*
+const List<String> kSurveyQuestions = [
+  'What is your phone number?',
+  'What is your name?',
+  'Which city do you live in?',
+  'How old are you?',
+  'What is your profession?',
+  'Please share your review about Mezan Chai.',
+];
+
+enum ChatRole { user, bot }
+
+class ChatMessage {
+  final String id;
+  final ChatRole role;
+  final String text;
+  final DateTime ts;
+
+  ChatMessage({
+    required this.id,
+    required this.role,
+    required this.text,
+    required this.ts,
+  });
+}
+
+// ---------------- COLORS (FROM THEME) ----------------
+
+const _kText = Color(0xFF111827);
+const _kMuted = Color(0xFF6B7280);
+const _kAccent = AppTheme.primary;
+const _kAccent2 = AppTheme.accent;
+
+// ---------------- LOYALTY STORAGE (GETSTORAGE) ----------------
+
+class LoyaltyPointsStore {
+  static final GetStorage _box = GetStorage();
+  static const String _key = 'loyalty_points';
+
+  /// Add [delta] points and return the new total.
+  static Future<int> addPoints(int delta) async {
+    final current = _box.read<int>(_key) ?? 0;
+    final updated = current + delta;
+    await _box.write(_key, updated);
+    return updated;
+  }
+
+  /// Optional helper to read current points (sync)
+  static int getPoints() {
+    return _box.read<int>(_key) ?? 0;
+  }
+}
+
+// ---------------- GLASS CARD ----------------
+
+class Glass extends StatelessWidget {
+  const Glass({
+    super.key,
+    required this.child,
+    this.radius = 24,
+    this.padding,
+  });
+
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    // White modern card
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: padding ?? const EdgeInsets.all(16),
+      child: child,
+    );
+  }
+}
+
+// ---------------- PERMISSION SCREEN ----------------
+
+class PermissionScreen extends StatelessWidget {
+  const PermissionScreen({super.key});
+
+  Future<void> _openSettings() async {
+    await openAppSettings();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Microphone Permission',
+          style: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Glass(
+          radius: 20,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.mic_off_rounded,
+                size: 48,
+                color: _kAccent,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Microphone access is required',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  color: _kText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Please allow microphone permission in app settings so we can listen to your answers.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  color: _kMuted,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings_rounded),
+                label: const Text('Open App Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- VOICE ASSISTANT SCREEN ----------------
+
+class VoiceAssistantChatScreen extends StatefulWidget {
+  const VoiceAssistantChatScreen({super.key});
+
+  @override
+  State<VoiceAssistantChatScreen> createState() =>
+      _VoiceAssistantChatScreenState();
+}
+
+class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
+  final FlutterTts _tts = FlutterTts();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final ScrollController _scroll = ScrollController();
+
+  final List<ChatMessage> _messages = [];
+
+  bool _speechAvailable = false;
+  bool _surveyRunning = false;
+  bool _listening = false;
+  String _liveTranscript = '';
+
+  String? _speakingId;
+
+  int _currentQuestionIndex = 0;
+  final Map<int, String> _answers = {};
+
+  // set your default language here
+  static const String _speechLocaleId = 'ur_PK'; // or 'en_US'
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+    _initSpeech();
+    _seedWelcome();
+  }
+
+  void _seedWelcome() {
+    _messages.add(
+      ChatMessage(
+        id: 'welcome',
+        role: ChatRole.bot,
+        text:
+            'Welcome to Mezan Chai voice survey.\nTap "Start Survey" and I will ask you a few questions one by one. Answer with your voice.',
+        ts: DateTime.now(),
+      ),
+    );
+  }
+
+  void _initTts() {
+    _tts.setLanguage('en-US'); // This is just for TTS voice language
+    _tts.setSpeechRate(0.5);
+    _tts.setPitch(1.0);
+
+    _tts.setStartHandler(() {
+      if (!mounted) return;
+      setState(() {});
+    });
+
+    _tts.setCompletionHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _speakingId = null;
+      });
+    });
+
+    _tts.setErrorHandler((msg) {
+      if (!mounted) return;
+      setState(() {
+        _speakingId = null;
+      });
+    });
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+          if (!mounted) return;
+          // keep listening flag in sync
+          setState(() {
+            _listening = status == 'listening';
+          });
+        },
+        onError: (error) async {
+          debugPrint('Speech error: $error');
+          if (!mounted) return;
+
+          setState(() {
+            _listening = false;
+          });
+
+          // handle "no match" nicely
+          if (error.errorMsg == 'error_no_match') {
+            final warn = ChatMessage(
+              id: 'no_match_${DateTime.now().millisecondsSinceEpoch}',
+              role: ChatRole.bot,
+              text:
+                  'I could not understand your answer. Please speak again clearly after the beep.',
+              ts: DateTime.now(),
+            );
+
+            setState(() {
+              _messages.add(warn);
+            });
+            _scrollToBottom();
+
+            // small delay, then retry same question
+            await Future.delayed(const Duration(seconds: 1));
+            if (!mounted || !_surveyRunning) return;
+            await _askCurrentQuestion();
+          }
+        },
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _speechAvailable = available;
+      });
+    } catch (e) {
+      debugPrint('Speech init error: $e');
+      if (!mounted) return;
+      setState(() {
+        _speechAvailable = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _tts.stop();
+    _speech.stop();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent + 120,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ---------- PERMISSIONS ----------
+
+  Future<bool> _ensureMicPermission() async {
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+
+    final result = await Permission.microphone.request();
+    if (result.isGranted) return true;
+
+    if (result.isPermanentlyDenied) {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PermissionScreen()),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission is required for voice input.'),
+          ),
+        );
+      }
+    }
+    return false;
+  }
+
+  // ---------- SURVEY FLOW ----------
+
+  Future<void> _startSurvey() async {
+    if (!_speechAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition is not available on this device.'),
+        ),
+      );
+      return;
+    }
+
+    final ok = await _ensureMicPermission();
+    if (!ok) return;
+
+    setState(() {
+      _surveyRunning = true;
+      _currentQuestionIndex = 0;
+      _answers.clear();
+      _messages.clear();
+    });
+
+    final intro = ChatMessage(
+      id: 'intro_${DateTime.now().millisecondsSinceEpoch}',
+      role: ChatRole.bot,
+      text:
+          'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+      ts: DateTime.now(),
+    );
+    setState(() {
+      _messages.add(intro);
+    });
+    _scrollToBottom();
+
+    await _tts.speak(
+      'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+    );
+    await Future.delayed(const Duration(milliseconds: 700));
+
+    await _askCurrentQuestion();
+  }
+
+  Future<void> _askCurrentQuestion() async {
+    if (_currentQuestionIndex < 0 ||
+        _currentQuestionIndex >= kSurveyQuestions.length) {
+      return;
+    }
+
+    final q = kSurveyQuestions[_currentQuestionIndex];
+
+    final botQuestion = ChatMessage(
+      id: 'q_$_currentQuestionIndex'
+          '_${DateTime.now().millisecondsSinceEpoch}',
+      role: ChatRole.bot,
+      text: q,
+      ts: DateTime.now(),
+    );
+
+    setState(() {
+      _messages.add(botQuestion);
+      _speakingId = botQuestion.id;
+    });
+    _scrollToBottom();
+
+    await _tts.stop();
+    await _tts.speak(q);
+
+    // small delay before starting mic so TTS doesn't overlap
+    await Future.delayed(const Duration(seconds: 1));
+    await _startListeningForAnswer();
+  }
+
+  Future<void> _startListeningForAnswer() async {
+    if (!_speechAvailable) return;
+
+    final ok = await _ensureMicPermission();
+    if (!ok) return;
+
+    _liveTranscript = '';
+    setState(() {
+      _listening = true;
+    });
+
+    // ensure previous session stopped
+    await _speech.stop();
+
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _liveTranscript = result.recognizedWords;
+        });
+
+        if (result.finalResult) {
+          _handleFinalTranscript(result.recognizedWords.trim());
+        }
+      
+
+      ///  ✅ LONGER LISTENING WINDOW
+      listenFor: const Duration(minutes: 2),
+
+      ///  ✅ LONGER SILENCE TOLERANCE
+      pauseFor: const Duration(seconds: 15),
+
+      partialResults: true,
+
+      ///  ✅ SET YOUR LANGUAGE HERE (Urdu / English)
+      localeId: 'ur_PK', // 'ur_PK' or 'en_US'
+
+      cancelOnError: true,
+
+      ///  Dictation = more free continuous speech
+      listenMode: stt.ListenMode.dictation,
+    );
+  }
+
+  Future<void> _handleFinalTranscript(String text) async {
+    await _speech.stop();
+    if (!mounted) return;
+
+    setState(() {
+      _listening = false;
+    });
+
+    final cleaned = text.trim();
+    final wordCount =
+        cleaned.isEmpty ? 0 : cleaned.split(RegExp(r'\s+')).length;
+
+    if (wordCount < 2) {
+      final warn = ChatMessage(
+        id: 'noise_${DateTime.now().millisecondsSinceEpoch}',
+        role: ChatRole.bot,
+        text:
+            'I could not hear you clearly. Please answer again in a quiet place and speak a full sentence.',
+        ts: DateTime.now(),
+      );
+      setState(() {
+        _messages.add(warn);
+      });
+      _scrollToBottom();
+      await Future.delayed(const Duration(milliseconds: 700));
+      await _askCurrentQuestion();
+      return;
+    }
+
+    _answers[_currentQuestionIndex] = cleaned;
+
+    final userMessage = ChatMessage(
+      id: 'a_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
+      role: ChatRole.user,
+      text: cleaned,
+      ts: DateTime.now(),
+    );
+
+    setState(() {
+      _messages.add(userMessage);
+      _liveTranscript = '';
+    });
+    _scrollToBottom();
+
+    _currentQuestionIndex++;
+    if (_currentQuestionIndex < kSurveyQuestions.length) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      await _askCurrentQuestion();
+    } else {
+      // ✅ SURVEY FINISHED
+      setState(() {
+        _surveyRunning = false;
+      });
+
+      final doneMsg = ChatMessage(
+        id: 'done_${DateTime.now().millisecondsSinceEpoch}',
+        role: ChatRole.bot,
+        text:
+            'Thank you for your time and feedback on Mezan Chai. Your responses are recorded.',
+        ts: DateTime.now(),
+      );
+      setState(() {
+        _messages.add(doneMsg);
+      });
+      _scrollToBottom();
+
+      await _tts.speak(
+        'Thank you for your time and feedback. Your responses are recorded.',
+      );
+
+      // add 20 pts
+      await LoyaltyPointsStore.addPoints(20);
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Header card
+                  Glass(
+                    radius: 20,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [_kAccent, _kAccent2],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _kAccent.withOpacity(0.4),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              )
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.local_cafe_rounded,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Voice Survey',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontFamily,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Complete the survey to earn points.',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontFamily,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Clear chat',
+                          onPressed: () {
+                            setState(() {
+                              _messages.clear();
+                              _surveyRunning = false;
+                              _currentQuestionIndex = 0;
+                              _answers.clear();
+                              _liveTranscript = '';
+                              _seedWelcome();
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: _kMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Main chat card
+                  Expanded(
+                    child: Glass(
+                      radius: 26,
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              controller: _scroll,
+                              padding: const EdgeInsets.only(bottom: 8),
+                              itemCount: _messages.length +
+                                  (_listening && _liveTranscript.isNotEmpty
+                                      ? 1
+                                      : 0),
+                              itemBuilder: (context, index) {
+                                if (_listening &&
+                                    _liveTranscript.isNotEmpty &&
+                                    index == _messages.length) {
+                                  return Align(
+                                    alignment: Alignment.centerRight,
+                                    child: _LiveTranscriptBubble(
+                                      text: _liveTranscript,
+                                    ),
+                                  );
+                                }
+
+                                final m = _messages[index];
+                                final isUser = m.role == ChatRole.user;
+                                return Column(
+                                  crossAxisAlignment: isUser
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                                  children: [
+                                    Align(
+                                      alignment: isUser
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                      child: _ChatBubble(
+                                        message: m,
+                                        isSpeaking: _speakingId == m.id,
+                                        onCopy: () => Clipboard.setData(
+                                          ClipboardData(text: m.text),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Status / button row
+                          Row(
+                            children: [
+                              if (_listening)
+                                Row(
+                                  children: const [
+                                    Icon(
+                                      Icons.mic_rounded,
+                                      size: 18,
+                                      color: _kAccent,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Listening… speak now',
+                                      style: TextStyle(
+                                        fontFamily: AppTheme.fontFamily,
+                                        color: _kMuted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else if (_surveyRunning)
+                                const Text(
+                                  'Asking questions…',
+                                  style: TextStyle(
+                                    fontFamily: AppTheme.fontFamily,
+                                    color: _kMuted,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              else
+                                const Text(
+                                  'Tap Start Survey.',
+                                  style: TextStyle(
+                                    fontFamily: AppTheme.fontFamily,
+                                    color: _kMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              const Spacer(),
+
+                              // Gradient pill button
+                              Container(
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  gradient: _surveyRunning
+                                      ? const LinearGradient(
+                                          colors: [Colors.grey, Colors.grey],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : const LinearGradient(
+                                          colors: [_kAccent, _kAccent2],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _kAccent.withOpacity(0.4),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton.icon(
+                                  onPressed: _surveyRunning
+                                      ? null
+                                      : () => _startSurvey(),
+                                  icon: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    _currentQuestionIndex == 0
+                                        ? 'Start Survey'
+                                        : 'Restart Survey',
+                                    style: const TextStyle(
+                                      fontFamily: AppTheme.fontFamily,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    shadowColor: Colors.transparent,
+                                    backgroundColor: Colors.transparent,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- CHAT BUBBLES ----------------
+
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({
+    required this.message,
+    required this.isSpeaking,
+    this.onCopy,
+  });
+
+  final ChatMessage message;
+  final bool isSpeaking;
+  final VoidCallback? onCopy;
+
+  bool get isUser => message.role == ChatRole.user;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isUser) {
+      // user bubble
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 600),
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [_kAccent, _kAccent2],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(4),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _kAccent.withOpacity(0.4),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: SelectableText(
+          message.text,
+          style: const TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            color: Colors.white,
+            fontSize: 14.5,
+            height: 1.35,
+          ),
+        ),
+      );
+    }
+
+    // bot bubble
+    return Glass(
+      radius: 18,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SelectableText(
+            message.text,
+            style: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontWeight: FontWeight.w300,
+              color: Colors.black,
+              fontSize: 14.5,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onCopy != null)
+                _MiniIconButton(
+                  icon: Icons.copy_rounded,
+                  label: 'Copy',
+                  onTap: onCopy!,
+                ),
+              const SizedBox(width: 4),
+              Icon(
+                isSpeaking
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_mute_rounded,
+                size: 14,
+                color: _kMuted,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniIconButton extends StatelessWidget {
+  const _MiniIconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: _kMuted),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: AppTheme.fontFamily,
+                fontSize: 11,
+                color: _kMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveTranscriptBubble extends StatelessWidget {
+  const _LiveTranscriptBubble({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 600),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: AppTheme.primary.withOpacity(0.06),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: AppTheme.fontFamily,
+          color: _kText,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+*/
+
+// const List<String> kSurveyQuestions = [
+//   'What is your phone number?',
+//   'What is your name?',
+//   'Which city do you live in?',
+//   'How old are you?',
+//   'What is your profession?',
+//   'Please share your review about Mezan Chai.',
+// ];
+
+
+// enum ChatRole { user, bot }
+
+// class ChatMessage {
+//   final String id;
+//   final ChatRole role;
+//   final String text;
+//   final DateTime ts;
+
+//   ChatMessage({
+//     required this.id,
+//     required this.role,
+//     required this.text,
+//     required this.ts,
+//   });
+// }
+
+// // ---------------- COLORS (FROM THEME) ----------------
+
+// const _kText = Color(0xFF111827);
+// const _kMuted = Color(0xFF6B7280);
+// const _kAccent = AppTheme.primary;
+// const _kAccent2 = AppTheme.accent;
+
+// // ---------------- LOYALTY STORAGE (GETSTORAGE) ----------------
+
+// class LoyaltyPointsStore {
+//   static final GetStorage _box = GetStorage();
+//   static const String _key = 'loyalty_points';
+
+//   /// Add [delta] points and return the new total.
+//   static Future<int> addPoints(int delta) async {
+//     final current = _box.read<int>(_key) ?? 0;
+//     final updated = current + delta;
+//     await _box.write(_key, updated);
+//     return updated;
+//   }
+
+//   /// Optional helper to read current points (sync)
+//   static int getPoints() {
+//     return _box.read<int>(_key) ?? 0;
+//   }
+// }
+
+
+// class Glass extends StatelessWidget {
+//   const Glass({
+//     super.key,
+//     required this.child,
+//     this.radius = 24,
+//     this.padding,
+//   });
+
+//   final Widget child;
+//   final double radius;
+//   final EdgeInsetsGeometry? padding;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     // White modern card
+//     return Container(
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(radius),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(.06),
+//             blurRadius: 18,
+//             offset: const Offset(0, 8),
+//           ),
+//         ],
+//       ),
+//       padding: padding ?? const EdgeInsets.all(16),
+//       child: child,
+//     );
+//   }
+// }
+
+// // ---------------- PERMISSION SCREEN ----------------
+
+// class PermissionScreen extends StatelessWidget {
+//   const PermissionScreen({super.key});
+
+//   Future<void> _openSettings() async {
+//     await openAppSettings();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text(
+//           'Microphone Permission',
+//           style: TextStyle(
+//             fontFamily: AppTheme.fontFamily,
+//             fontWeight: FontWeight.w600,
+//           ),
+//         ),
+//         backgroundColor: Colors.white,
+//         surfaceTintColor: Colors.transparent,
+//         elevation: 0,
+//       ),
+//       body: Center(
+//         child: Glass(
+//           radius: 20,
+//           padding: const EdgeInsets.all(20),
+//           child: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               const Icon(
+//                 Icons.mic_off_rounded,
+//                 size: 48,
+//                 color: _kAccent,
+//               ),
+//               const SizedBox(height: 16),
+//               const Text(
+//                 'Microphone access is required',
+//                 textAlign: TextAlign.center,
+//                 style: TextStyle(
+//                   fontFamily: AppTheme.fontFamily,
+//                   color: _kText,
+//                   fontSize: 18,
+//                   fontWeight: FontWeight.w700,
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               const Text(
+//                 'Please allow microphone permission in app settings so we can listen to your answers.',
+//                 textAlign: TextAlign.center,
+//                 style: TextStyle(
+//                   fontFamily: AppTheme.fontFamily,
+//                   color: _kMuted,
+//                   fontSize: 13,
+//                 ),
+//               ),
+//               const SizedBox(height: 20),
+//               ElevatedButton.icon(
+//                 onPressed: _openSettings,
+//                 icon: const Icon(Icons.settings_rounded),
+//                 label: const Text('Open App Settings'),
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: _kAccent,
+//                   foregroundColor: Colors.white,
+//                   padding: const EdgeInsets.symmetric(
+//                     horizontal: 18,
+//                     vertical: 10,
+//                   ),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(999),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// // ---------------- VOICE ASSISTANT SCREEN ----------------
+
+// class VoiceAssistantChatScreen extends StatefulWidget {
+//   const VoiceAssistantChatScreen({super.key});
+
+//   @override
+//   State<VoiceAssistantChatScreen> createState() =>
+//       _VoiceAssistantChatScreenState();
+// }
+
+// class _VoiceAssistantChatScreenState extends State<VoiceAssistantChatScreen> {
+//   final FlutterTts _tts = FlutterTts();
+//   final stt.SpeechToText _speech = stt.SpeechToText();
+//   final ScrollController _scroll = ScrollController();
+
+//   final List<ChatMessage> _messages = [];
+
+//   bool _speechAvailable = false;
+//   bool _surveyRunning = false;
+//   bool _listening = false;
+//   String _liveTranscript = '';
+
+//   String? _speakingId;
+
+//   int _currentQuestionIndex = 0;
+//   final Map<int, String> _answers = {};
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initTts();
+//     _initSpeech();
+//     _seedWelcome();
+//   }
+
+//   void _seedWelcome() {
+//     _messages.add(
+//       ChatMessage(
+//         id: 'welcome',
+//         role: ChatRole.bot,
+//         text:
+//             'Welcome to Mezan Chai voice survey.\nTap "Start Survey" and I will ask you a few questions one by one. Answer with your voice.',
+//         ts: DateTime.now(),
+//       ),
+//     );
+//   }
+
+//   void _initTts() {
+//     _tts.setLanguage('en-US');
+//     _tts.setSpeechRate(0.5);
+//     _tts.setPitch(1.0);
+
+//     _tts.setStartHandler(() {
+//       setState(() {});
+//     });
+
+//     _tts.setCompletionHandler(() {
+//       setState(() {
+//         _speakingId = null;
+//       });
+//     });
+
+//     _tts.setErrorHandler((msg) {
+//       setState(() {
+//         _speakingId = null;
+//       });
+//     });
+//   }
+
+//   Future<void> _initSpeech() async {
+//     try {
+//       final available = await _speech.initialize(
+//         onStatus: (status) {
+//           debugPrint('Speech status: $status');
+//         },
+//         onError: (error) {
+//           debugPrint('Speech error: $error');
+//         },
+//       );
+//       setState(() {
+//         _speechAvailable = available;
+//       });
+//     } catch (e) {
+//       debugPrint('Speech init error: $e');
+//       setState(() {
+//         _speechAvailable = false;
+//       });
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     _scroll.dispose();
+//     _tts.stop();
+//     _speech.stop();
+//     super.dispose();
+//   }
+
+//   void _scrollToBottom() {
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (!_scroll.hasClients) return;
+//       _scroll.animateTo(
+//         _scroll.position.maxScrollExtent + 120,
+//         duration: const Duration(milliseconds: 250),
+//         curve: Curves.easeOut,
+//       );
+//     });
+//   }
+
+//   // ---------- PERMISSIONS ----------
+
+//   Future<bool> _ensureMicPermission() async {
+//     final status = await Permission.microphone.status;
+//     if (status.isGranted) return true;
+
+//     final result = await Permission.microphone.request();
+//     if (result.isGranted) return true;
+
+//     if (result.isPermanentlyDenied) {
+//       if (mounted) {
+//         Navigator.of(context).push(
+//           MaterialPageRoute(builder: (_) => const PermissionScreen()),
+//         );
+//       }
+//     } else {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('Microphone permission is required for voice input.'),
+//           ),
+//         );
+//       }
+//     }
+//     return false;
+//   }
+
+//   // ---------- SURVEY FLOW ----------
+
+//   Future<void> _startSurvey() async {
+//     if (!_speechAvailable) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Speech recognition is not available on this device.'),
+//         ),
+//       );
+//       return;
+//     }
+
+//     final ok = await _ensureMicPermission();
+//     if (!ok) return;
+
+//     setState(() {
+//       _surveyRunning = true;
+//       _currentQuestionIndex = 0;
+//       _answers.clear();
+//       _messages.clear();
+//     });
+
+//     final intro = ChatMessage(
+//       id: 'intro_${DateTime.now().millisecondsSinceEpoch}',
+//       role: ChatRole.bot,
+//       text:
+//           'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+//       ts: DateTime.now(),
+//     );
+//     setState(() {
+//       _messages.add(intro);
+//     });
+//     _scrollToBottom();
+
+//     await _tts.speak(
+//       'Great! I will ask you some questions about you and your Mezan Chai experience. Please answer with your voice after each question.',
+//     );
+//     await Future.delayed(const Duration(milliseconds: 700));
+
+//     await _askCurrentQuestion();
+//   }
+
+//   Future<void> _askCurrentQuestion() async {
+//     if (_currentQuestionIndex < 0 ||
+//         _currentQuestionIndex >= kSurveyQuestions.length) {
+//       return;
+//     }
+
+//     final q = kSurveyQuestions[_currentQuestionIndex];
+
+//     final botQuestion = ChatMessage(
+//       id: 'q_$_currentQuestionIndex'
+//           '_${DateTime.now().millisecondsSinceEpoch}',
+//       role: ChatRole.bot,
+//       text: q,
+//       ts: DateTime.now(),
+//     );
+
+//     setState(() {
+//       _messages.add(botQuestion);
+//       _speakingId = botQuestion.id;
+//     });
+//     _scrollToBottom();
+
+//     await _tts.stop();
+//     await _tts.speak(q);
+
+//     await _startListeningForAnswer();
+//   }
+
+
+//   Future<void> _startListeningForAnswer() async {
+//   if (!_speechAvailable) return;
+
+//   final ok = await _ensureMicPermission();
+//   if (!ok) return;
+
+//   _liveTranscript = '';
+//   setState(() {
+//     _listening = true;
+//   });
+
+//   await _speech.listen(
+//     onResult: (result) {
+//       if (!mounted) return;
+//       setState(() {
+//         _liveTranscript = result.recognizedWords;
+//       });
+
+//       if (result.finalResult) {
+//         _handleFinalTranscript(result.recognizedWords.trim());
+//       }
+//     },
+
+//     ///  ✅ INCREASED LISTENING TIME
+//     listenFor: const Duration(minutes: 2),
+
+//     ///  ✅ INCREASED SILENCE TOLERANCE
+//     pauseFor: const Duration(seconds: 15),
+
+//     partialResults: true,
+//     localeId: 'ur_PK', // <- Urdu (Pakistan) //localeId: 'en_US',
+//     cancelOnError: true,
+
+//     ///  Dictation = continuous speech mode
+//     listenMode: stt.ListenMode.dictation,
+//   );
+// }
+
+
+//   // Future<void> _startListeningForAnswer() async {
+//   //   if (!_speechAvailable) return;
+
+//   //   final ok = await _ensureMicPermission();
+//   //   if (!ok) return;
+
+//   //   _liveTranscript = '';
+//   //   setState(() {
+//   //     _listening = true;
+//   //   });
+
+//   //   await _speech.listen(
+//   //     onResult: (result) {
+//   //       if (!mounted) return;
+//   //       setState(() {
+//   //         _liveTranscript = result.recognizedWords;
+//   //       });
+
+//   //       if (result.finalResult) {
+//   //         _handleFinalTranscript(result.recognizedWords.trim());
+//   //       }
+//   //     },
+//   //     listenFor: const Duration(seconds: 40),
+//   //     pauseFor: const Duration(seconds: 6),
+//   //     partialResults: true,
+//   //     localeId: 'en_US',
+//   //     cancelOnError: true,
+//   //     listenMode: stt.ListenMode.dictation,
+//   //   );
+//   // }
+
+//   Future<void> _handleFinalTranscript(String text) async {
+//     await _speech.stop();
+//     if (!mounted) return;
+
+//     setState(() {
+//       _listening = false;
+//     });
+
+//     final cleaned = text.trim();
+//     final wordCount =
+//         cleaned.isEmpty ? 0 : cleaned.split(RegExp(r'\s+')).length;
+
+//     if (wordCount < 2) {
+//       final warn = ChatMessage(
+//         id: 'noise_${DateTime.now().millisecondsSinceEpoch}',
+//         role: ChatRole.bot,
+//         text:
+//             'I could not hear you clearly. Please answer again in a quiet place and speak a full sentence.',
+//         ts: DateTime.now(),
+//       );
+//       setState(() {
+//         _messages.add(warn);
+//       });
+//       _scrollToBottom();
+//       await Future.delayed(const Duration(milliseconds: 700));
+//       await _askCurrentQuestion();
+//       return;
+//     }
+
+//     _answers[_currentQuestionIndex] = cleaned;
+
+//     final userMessage = ChatMessage(
+//       id: 'a_${_currentQuestionIndex}_${DateTime.now().millisecondsSinceEpoch}',
+//       role: ChatRole.user,
+//       text: cleaned,
+//       ts: DateTime.now(),
+//     );
+
+//     setState(() {
+//       _messages.add(userMessage);
+//       _liveTranscript = '';
+//     });
+//     _scrollToBottom();
+
+//     _currentQuestionIndex++;
+//     if (_currentQuestionIndex < kSurveyQuestions.length) {
+//       await Future.delayed(const Duration(milliseconds: 700));
+//       await _askCurrentQuestion();
+//     } else {
+//       // ✅ SURVEY FINISHED
+//       setState(() {
+//         _surveyRunning = false;
+//       });
+
+//       final doneMsg = ChatMessage(
+//         id: 'done_${DateTime.now().millisecondsSinceEpoch}',
+//         role: ChatRole.bot,
+//         text:
+//             'Thank you for your time and feedback on Mezan Chai. Your responses are recorded.',
+//         ts: DateTime.now(),
+//       );
+//       setState(() {
+//         _messages.add(doneMsg);
+//       });
+//       _scrollToBottom();
+
+//       await _tts.speak(
+//         'Thank you for your time and feedback. Your responses are recorded.',
+//       );
+
+//       await LoyaltyPointsStore.addPoints(20);
+
+//       if (!mounted) return;
+//       Navigator.of(context).pop();
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: SafeArea(
+//         child: Center(
+//           child: ConstrainedBox(
+//             constraints: const BoxConstraints(maxWidth: 900),
+//             child: Padding(
+//               padding: const EdgeInsets.all(16.0),
+//               child: Column(
+//                 children: [
+//                   // Header card
+//                   Glass(
+//                     radius: 20,
+//                     padding: const EdgeInsets.symmetric(
+//                       horizontal: 18,
+//                       vertical: 14,
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         Container(
+//                           width: 38,
+//                           height: 38,
+//                           decoration: BoxDecoration(
+//                             shape: BoxShape.circle,
+//                             gradient: const LinearGradient(
+//                               colors: [_kAccent, _kAccent2],
+//                             ),
+//                             boxShadow: [
+//                               BoxShadow(
+//                                 color: _kAccent.withOpacity(0.4),
+//                                 blurRadius: 18,
+//                                 offset: const Offset(0, 6),
+//                               )
+//                             ],
+//                           ),
+//                           child: const Icon(
+//                             Icons.local_cafe_rounded,
+//                             size: 20,
+//                             color: Colors.white,
+//                           ),
+//                         ),
+//                         const SizedBox(width: 10),
+//                         const Column(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             Text(
+//                               'Voice Survey',
+//                               style: TextStyle(
+//                                 fontFamily: AppTheme.fontFamily,
+//                                 fontSize: 17,
+//                                 fontWeight: FontWeight.w500,
+//                                 color: Colors.black,
+//                               ),
+//                             ),
+//                             SizedBox(height: 2),
+//                             Text(
+//                               'Complete the survey to earn points.',
+//                               style: TextStyle(
+//                                 fontFamily: AppTheme.fontFamily,
+//                                 fontSize: 11,
+//                                 fontWeight: FontWeight.w400,
+//                                 color: Colors.black87,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                         const Spacer(),
+//                         IconButton(
+//                           tooltip: 'Clear chat',
+//                           onPressed: () {
+//                             setState(() {
+//                               _messages.clear();
+//                               _surveyRunning = false;
+//                               _currentQuestionIndex = 0;
+//                               _answers.clear();
+//                               _liveTranscript = '';
+//                               _seedWelcome();
+//                             });
+//                           },
+//                           icon: const Icon(
+//                             Icons.delete_outline,
+//                             color: _kMuted,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 14),
+
+//                   // Main chat card
+//                   Expanded(
+//                     child: Glass(
+//                       radius: 26,
+//                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+//                       child: Column(
+//                         children: [
+//                           Expanded(
+//                             child: ListView.builder(
+//                               controller: _scroll,
+//                               padding: const EdgeInsets.only(bottom: 8),
+//                               itemCount: _messages.length +
+//                                   (_listening && _liveTranscript.isNotEmpty
+//                                       ? 1
+//                                       : 0),
+//                               itemBuilder: (context, index) {
+//                                 if (_listening &&
+//                                     _liveTranscript.isNotEmpty &&
+//                                     index == _messages.length) {
+//                                   return Align(
+//                                     alignment: Alignment.centerRight,
+//                                     child: _LiveTranscriptBubble(
+//                                       text: _liveTranscript,
+//                                     ),
+//                                   );
+//                                 }
+
+//                                 final m = _messages[index];
+//                                 final isUser = m.role == ChatRole.user;
+//                                 return Column(
+//                                   crossAxisAlignment: isUser
+//                                       ? CrossAxisAlignment.end
+//                                       : CrossAxisAlignment.start,
+//                                   children: [
+//                                     Align(
+//                                       alignment: isUser
+//                                           ? Alignment.centerRight
+//                                           : Alignment.centerLeft,
+//                                       child: _ChatBubble(
+//                                         message: m,
+//                                         isSpeaking: _speakingId == m.id,
+//                                         onCopy: () => Clipboard.setData(
+//                                           ClipboardData(text: m.text),
+//                                         ),
+//                                       ),
+//                                     ),
+//                                     const SizedBox(height: 10),
+//                                   ],
+//                                 );
+//                               },
+//                             ),
+//                           ),
+//                           const SizedBox(height: 8),
+
+//                           // Status / button row
+//                           Row(
+//                             children: [
+//                               if (_listening)
+//                                 Row(
+//                                   children: const [
+//                                     Icon(
+//                                       Icons.mic_rounded,
+//                                       size: 18,
+//                                       color: _kAccent,
+//                                     ),
+//                                     SizedBox(width: 6),
+//                                     Text(
+//                                       'Listening… speak now',
+//                                       style: TextStyle(
+//                                         fontFamily: AppTheme.fontFamily,
+//                                         color: _kMuted,
+//                                         fontSize: 12,
+//                                       ),
+//                                     ),
+//                                   ],
+//                                 )
+//                               else if (_surveyRunning)
+//                                 const Text(
+//                                   'Asking questions…',
+//                                   style: TextStyle(
+//                                     fontFamily: AppTheme.fontFamily,
+//                                     color: _kMuted,
+//                                     fontSize: 12,
+//                                   ),
+//                                 )
+//                               else
+//                                 const Text(
+//                                   'Tap Start Survey.',
+//                                   style: TextStyle(
+//                                     fontFamily: AppTheme.fontFamily,
+//                                     color: _kMuted,
+//                                     fontSize: 12,
+//                                   ),
+//                                 ),
+//                               const Spacer(),
+
+//                               // Gradient pill button
+//                               Container(
+//                                 height: 38,
+//                                 decoration: BoxDecoration(
+//                                   gradient: _surveyRunning
+//                                       ? const LinearGradient(
+//                                           colors: [Colors.grey, Colors.grey],
+//                                           begin: Alignment.topLeft,
+//                                           end: Alignment.bottomRight,
+//                                         )
+//                                       : const LinearGradient(
+//                                           colors: [_kAccent, _kAccent2],
+//                                           begin: Alignment.topLeft,
+//                                           end: Alignment.bottomRight,
+//                                         ),
+//                                   borderRadius: BorderRadius.circular(999),
+//                                   boxShadow: [
+//                                     BoxShadow(
+//                                       color: _kAccent.withOpacity(0.4),
+//                                       blurRadius: 18,
+//                                       offset: const Offset(0, 6),
+//                                     ),
+//                                   ],
+//                                 ),
+//                                 child: ElevatedButton.icon(
+//                                   onPressed: _surveyRunning
+//                                       ? null
+//                                       : () => _startSurvey(),
+//                                   icon: const Icon(
+//                                     Icons.play_arrow_rounded,
+//                                     color: Colors.white,
+//                                   ),
+//                                   label: Text(
+//                                     _currentQuestionIndex == 0
+//                                         ? 'Start Survey'
+//                                         : 'Restart Survey',
+//                                     style: const TextStyle(
+//                                       fontFamily: AppTheme.fontFamily,
+//                                       fontWeight: FontWeight.w500,
+//                                       fontSize: 11,
+//                                       color: Colors.white,
+//                                     ),
+//                                   ),
+//                                   style: ElevatedButton.styleFrom(
+//                                     elevation: 0,
+//                                     shadowColor: Colors.transparent,
+//                                     backgroundColor: Colors.transparent,
+//                                     foregroundColor: Colors.white,
+//                                     padding: const EdgeInsets.symmetric(
+//                                       horizontal: 20,
+//                                       vertical: 12,
+//                                     ),
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius:
+//                                           BorderRadius.circular(999),
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// // ---------------- CHAT BUBBLES ----------------
+
+// class _ChatBubble extends StatelessWidget {
+//   const _ChatBubble({
+//     required this.message,
+//     required this.isSpeaking,
+//     this.onCopy,
+//   });
+
+//   final ChatMessage message;
+//   final bool isSpeaking;
+//   final VoidCallback? onCopy;
+
+//   bool get isUser => message.role == ChatRole.user;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (isUser) {
+//       // user bubble
+//       return Container(
+//         constraints: const BoxConstraints(maxWidth: 600),
+//         padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+//         decoration: BoxDecoration(
+//           gradient: const LinearGradient(
+//             colors: [_kAccent, _kAccent2],
+//             begin: Alignment.topLeft,
+//             end: Alignment.bottomRight,
+//           ),
+//           borderRadius: const BorderRadius.only(
+//             topLeft: Radius.circular(20),
+//             topRight: Radius.circular(4),
+//             bottomLeft: Radius.circular(20),
+//             bottomRight: Radius.circular(20),
+//           ),
+//           boxShadow: [
+//             BoxShadow(
+//               color: _kAccent.withOpacity(0.4),
+//               blurRadius: 14,
+//               offset: const Offset(0, 6),
+//             ),
+//           ],
+//         ),
+//         child: SelectableText(
+//           message.text,
+//           style: const TextStyle(
+//             fontFamily: AppTheme.fontFamily,
+//             color: Colors.white,
+//             fontSize: 14.5,
+//             height: 1.35,
+//           ),
+//         ),
+//       );
+//     }
+
+//     // bot bubble
+//     return Glass(
+//       radius: 18,
+//       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           SelectableText(
+//             message.text,
+//             style: const TextStyle(
+//               fontFamily: AppTheme.fontFamily,
+//               fontWeight: FontWeight.w300,
+//               color: Colors.black,
+//               fontSize: 14.5,
+//               height: 1.35,
+//             ),
+//           ),
+//           const SizedBox(height: 6),
+//           Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               if (onCopy != null)
+//                 _MiniIconButton(
+//                   icon: Icons.copy_rounded,
+//                   label: 'Copy',
+//                   onTap: onCopy!,
+//                 ),
+//               const SizedBox(width: 4),
+//               Icon(
+//                 isSpeaking
+//                     ? Icons.volume_up_rounded
+//                     : Icons.volume_mute_rounded,
+//                 size: 14,
+//                 color: _kMuted,
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class _MiniIconButton extends StatelessWidget {
+//   const _MiniIconButton({
+//     required this.icon,
+//     required this.label,
+//     required this.onTap,
+//   });
+
+//   final IconData icon;
+//   final String label;
+//   final VoidCallback onTap;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return InkWell(
+//       onTap: onTap,
+//       borderRadius: BorderRadius.circular(999),
+//       child: Padding(
+//         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+//         child: Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             Icon(icon, size: 16, color: _kMuted),
+//             const SizedBox(width: 4),
+//             Text(
+//               label,
+//               style: const TextStyle(
+//                 fontFamily: AppTheme.fontFamily,
+//                 fontSize: 11,
+//                 color: _kMuted,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class _LiveTranscriptBubble extends StatelessWidget {
+//   const _LiveTranscriptBubble({required this.text});
+
+//   final String text;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       constraints: const BoxConstraints(maxWidth: 600),
+//       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+//       decoration: BoxDecoration(
+//         borderRadius: BorderRadius.circular(18),
+//         color: AppTheme.primary.withOpacity(0.06),
+//         border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+//       ),
+//       child: Text(
+//         text,
+//         style: const TextStyle(
+//           fontFamily: AppTheme.fontFamily,
+//           color: _kText,
+//           fontSize: 13,
+//         ),
+//       ),
+//     );
+//   }
+// }
 
