@@ -63,6 +63,9 @@ AppBar _buildAppBar() {
         children: [
           // Brand Icon Circle
           // Container(
+      /*    Bold Aroma. Pure Taste.
+دلکش خوشبو۔ خالص ذائقہ۔
+*/
           //   width: 42,
           //   height: 42,
           //   decoration: BoxDecoration(
@@ -310,7 +313,7 @@ AppBar _buildAppBar() {
                   color: Colors.white70,
                 ),
               ),
-              SizedBox(height: 4),
+              SizedBox(height: 11),
               Icon(Icons.qr_code_scanner_rounded,
                   color: Colors.white, size: 24),
             ],
