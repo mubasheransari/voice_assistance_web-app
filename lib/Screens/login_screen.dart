@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/Screens/sales_survery_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
-//want a hardcoded login testuser@gmail.com and password = Testing@123 navigqate to HomeScreen and testsurvery@gmail.com and password Testing@123 then navigate to SurveyScreenView()
-import 'package:flutter/material.dart';
-import 'package:voice_assistant_project/Theme/theme.dart';
-import 'package:voice_assistant_project/Screens/home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
