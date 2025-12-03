@@ -7181,8 +7181,6 @@ const List<Map<String, dynamic>> kTeaProducts =  [
 
 
 
-// ------------------ PRODUCT SELECTION MODEL ------------------
-
 class ProductSelection {
   final Map<String, dynamic> product;
   int quantity;
@@ -7214,10 +7212,7 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
 
   bool _submitting = false;
 
-  // current selected product label for dropdown
   String? _selectedProductName;
-
-  // list of products added below with quantity
   final List<ProductSelection> _selectedProducts = [];
 
   @override
@@ -7280,7 +7275,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
       const SnackBar(content: Text('Survey submitted successfully!')),
     );
 
-    // Clear everything
     _formKey.currentState?.reset();
     _nameCtrl.clear();
     _phoneCtrl.clear();
@@ -7367,7 +7361,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 18),
 
-                // Name
                 _InputCard(
                   hint: 'Name',
                   icon: Icons.person_outline_rounded,
@@ -7376,7 +7369,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 12),
 
-                // Phone
                 _InputCard(
                   hint: 'Phone Number',
                   icon: Icons.phone_rounded,
@@ -7386,7 +7378,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 12),
 
-                // CNIC
                 _InputCard(
                   hint: 'CNIC Number (13 digits)',
                   icon: Icons.badge_outlined,
@@ -7396,7 +7387,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 12),
 
-                // Address
                 _InputCard(
                   hint: 'Address',
                   icon: Icons.home_outlined,
@@ -7405,7 +7395,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 12),
 
-                // City
                 _InputCard(
                   hint: 'City',
                   icon: Icons.location_city_outlined,
@@ -7413,8 +7402,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                   validator: (v) => _validateRequired(v, 'City'),
                 ),
                 const SizedBox(height: 20),
-
-                // ---------- PRODUCT DROPDOWN + LIST ----------
 
                 const Text(
                   'Products sold',
@@ -7427,7 +7414,7 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Search by item name, select product and adjust quantities below.',
+                  'Search by item name, filter by brand, select product and adjust quantities below.',
                   style: TextStyle(
                     fontFamily: AppTheme.fontFamily,
                     fontSize: 12.5,
@@ -7438,7 +7425,7 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
 
                 _SearchableProductDropdownCard(
                   label: 'Product (item name)',
-                //  icon: Icons.local_cafe_outlined,
+                  icon: Icons.local_cafe_outlined,
                   selectedText: _selectedProductName,
                   products: kTeaProducts,
                   onProductSelected: _onProductPicked,
@@ -7489,7 +7476,8 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
                                 (sel.product['brand'] ?? '').toString();
                             final gramsMatch = RegExp(r'(\d+(\.\d+)?)GM')
                                 .firstMatch(
-                                    (sel.product['name'] ?? '').toString()
+                                    (sel.product['name'] ?? '')
+                                        .toString()
                                         .toUpperCase());
                             final grams =
                                 gramsMatch != null ? gramsMatch.group(0)! : '';
@@ -7594,7 +7582,6 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
 
                 const SizedBox(height: 18),
 
-                // Comment (multiline)
                 _MultilineInputCard(
                   hint: 'Comment (3 lines max)',
                   icon: Icons.notes_rounded,
@@ -7852,14 +7839,14 @@ class _MultilineInputCard extends StatelessWidget {
 class _SearchableProductDropdownCard extends StatelessWidget {
   const _SearchableProductDropdownCard({
     required this.label,
-  //  required this.icon,
+    required this.icon,
     required this.products,
     required this.onProductSelected,
     this.selectedText,
   });
 
   final String label;
- // final IconData icon;
+  final IconData icon;
   final List<Map<String, dynamic>> products;
   final void Function(Map<String, dynamic> product) onProductSelected;
   final String? selectedText;
@@ -7881,12 +7868,12 @@ class _SearchableProductDropdownCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Icon(
-          //   icon,
-          //   color: AppTheme.primary,
-          //   size: 22,
-          // ),
-          // const SizedBox(width: 10),
+          Icon(
+            icon,
+            color: AppTheme.primary,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -7964,32 +7951,44 @@ class _SearchableProductDropdownCard extends StatelessWidget {
     );
   }
 
-  Future<Map<String, dynamic>?> _showProductSearchBottomSheet(
-      BuildContext context) async {
-    return showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        String searchTerm = '';
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final filtered = products.where((p) {
-              final name = (p['item_name'] ?? '').toString().toLowerCase();
-              if (searchTerm.isEmpty) return true;
-              return name.contains(searchTerm);
-            }).toList();
 
-            return Padding(
+  Future<Map<String, dynamic>?> _showProductSearchBottomSheet(
+  BuildContext context,
+) async {
+  // distinct brands list + "All"
+  final Set<String> brandSet = {};
+  for (final p in products) {
+    final b = (p['brand'] ?? '').toString().trim();
+    if (b.isNotEmpty) brandSet.add(b);
+  }
+  final List<String> brands = ['All', ...brandSet.toList()];
+
+  String searchTerm = '';
+  String selectedBrand = 'All';
+
+  return showModalBottomSheet<Map<String, dynamic>>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.5, // 👈 half of the screen
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
                 children: [
+                  // drag handle
                   Container(
                     width: 42,
                     height: 4,
@@ -7999,21 +7998,23 @@ class _SearchableProductDropdownCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
+
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 4),
                     child: Text(
                       'Select product',
                       style: TextStyle(
                         fontFamily: AppTheme.fontFamily,
-                        fontSize: 18.5,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.primary,
                       ),
                     ),
                   ),
+
+                  // search
                   Padding(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                     child: TextField(
                       decoration: InputDecoration(
                         prefixIcon: const Icon(
@@ -8041,1366 +8042,143 @@ class _SearchableProductDropdownCard extends StatelessWidget {
                         ),
                       ),
                       onChanged: (v) {
-                        setModalState(() {
-                          searchTerm = v.toLowerCase();
-                        });
+                        (context as Element).markNeedsBuild();
+                        // we’ll handle state with StatefulBuilder below
                       },
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final p = filtered[index];
-                        final itemName =
-                            (p['item_name'] ?? '').toString();
-                        final brand =
-                            (p['brand'] ?? '').toString();
-                        return ListTile(
-                          title: Text(
-                            itemName,
-                            style: const TextStyle(
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
+
+                  // we wrap rest in StatefulBuilder for filtering state
+                  Expanded(
+                    child: StatefulBuilder(
+                      builder: (context, setModalState) {
+                        // keep searchTerm & selectedBrand in closure
+                        final filtered = products.where((p) {
+                          final name = (p['item_name'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          final brand =
+                              (p['brand'] ?? '').toString().trim();
+                          if (searchTerm.isNotEmpty &&
+                              !name.contains(searchTerm)) {
+                            return false;
+                          }
+                          if (selectedBrand != 'All' &&
+                              brand != selectedBrand) {
+                            return false;
+                          }
+                          return true;
+                        }).toList();
+
+                        return Column(
+                          children: [
+                            // brand chips row
+                            SizedBox(
+                              height: 44,
+                              child: ListView.separated(
+                                controller: scrollController,
+                                // use a separate controller for full sheet scroll?
+                                // but for chips it's fine without
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16),
+                                itemCount: brands.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final brand = brands[index];
+                                  final selected =
+                                      selectedBrand == brand;
+                                  return ChoiceChip(
+                                    label: Text(
+                                      brand,
+                                      style: TextStyle(
+                                        fontFamily: AppTheme.fontFamily,
+                                        fontSize: 12.5,
+                                        fontWeight: selected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                    selected: selected,
+                                    selectedColor: AppTheme.primary
+                                        .withOpacity(0.12),
+                                    showCheckmark: false,
+                                    backgroundColor:
+                                        const Color(0xFFF7F5FF),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                      side: BorderSide(
+                                        color: selected
+                                            ? AppTheme.primary
+                                            : AppTheme.primary
+                                                .withOpacity(0.12),
+                                      ),
+                                    ),
+                                    onSelected: (val) {
+                                      if (!val) return;
+                                      setModalState(() {
+                                        selectedBrand = brand;
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                          subtitle: brand.isNotEmpty
-                              ? Text(
-                                  brand,
-                                  style: const TextStyle(
-                                    fontFamily: AppTheme.fontFamily,
-                                    fontSize: 11.5,
-                                    color: Color(0xFF8A84A4),
-                                  ),
-                                )
-                              : null,
-                          onTap: () => Navigator.of(context).pop(p),
+
+                            const SizedBox(height: 6),
+
+                            // product list
+                            Expanded(
+                              child: ListView.builder(
+                                controller: scrollController,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final p = filtered[index];
+                                  final itemName = (p['item_name'] ?? '')
+                                      .toString();
+                                  final brand =
+                                      (p['brand'] ?? '').toString();
+                                  return ListTile(
+                                    title: Text(
+                                      itemName,
+                                      style: const TextStyle(
+                                        fontFamily: AppTheme.fontFamily,
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    subtitle: brand.isNotEmpty
+                                        ? Text(
+                                            brand,
+                                            style: const TextStyle(
+                                              fontFamily:
+                                                  AppTheme.fontFamily,
+                                              fontSize: 11.5,
+                                              color: Color(0xFF8A84A4),
+                                            ),
+                                          )
+                                        : null,
+                                    onTap: () =>
+                                        Navigator.of(context).pop(p),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
                   ),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-/*
-class BrandSaleEntry {
-  String? brand;
-  String? productId;
-  final TextEditingController amountCtrl;
-
-  BrandSaleEntry({
-    this.brand,
-    this.productId,
-    String? initialAmount,
-  }) : amountCtrl = TextEditingController(text: initialAmount ?? '');
-}
-
-// ------------------ SURVEY SCREEN ------------------
-
-class SurveyScreenView extends StatefulWidget {
-  const SurveyScreenView({super.key});
-
-  @override
-  State<SurveyScreenView> createState() => _SurveyScreenViewState();
-}
-
-class _SurveyScreenViewState extends State<SurveyScreenView> {
-  final _formKey = GlobalKey<FormState>();
-
-  final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _cnicCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _commentCtrl = TextEditingController();
-
-  bool _submitting = false;
-
-  // -------- dynamic brand sales list --------
-  final List<BrandSaleEntry> _brandSales = [];
-
-  @override
-  void initState() {
-    super.initState();
-    // start with one row
-    _brandSales.add(BrandSaleEntry());
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
-    _cnicCtrl.dispose();
-    _addressCtrl.dispose();
-    _cityCtrl.dispose();
-    _commentCtrl.dispose();
-    for (final e in _brandSales) {
-      e.amountCtrl.dispose();
-    }
-    super.dispose();
-  }
-
-  // -------- helpers for brands / packs --------
-
-  List<String> get _brands {
-    final set = <String>{};
-    for (final p in kTeaProducts) {
-      final b = (p['brand'] ?? '').toString();
-      if (b.isNotEmpty) set.add(b);
-    }
-    final list = set.toList();
-    list.sort();
-    return list;
-  }
-
-  List<Map<String, dynamic>> _brandProductsFor(String? brand) {
-    if (brand == null) return [];
-    return kTeaProducts
-        .where((p) => (p['brand'] ?? '').toString() == brand)
-        .toList();
-  }
-
-  String _packLabel(Map<String, dynamic> p) {
-    final name = (p['name'] ?? '').toString().toUpperCase();
-    final match = RegExp(r'(\d+(\.\d+)?)GM').firstMatch(name);
-    final grams = match != null ? match.group(0)! : name;
-    return grams; // e.g. "27GM"
-  }
-
-  // ---------- validators ----------
-
-  String? _validateRequired(String? v, String field) {
-    final s = (v ?? '').trim();
-    if (s.isEmpty) return '$field is required';
-    return null;
-  }
-
-  String? _validatePhone(String? v) {
-    final s = (v ?? '').trim();
-    if (s.isEmpty) return 'Phone number is required';
-    if (s.length < 8) return 'Enter a valid phone number';
-    return null;
-  }
-
-  String? _validateCnic(String? v) {
-    final s = (v ?? '').replaceAll(RegExp(r'\D'), '');
-    if (s.isEmpty) return 'CNIC number is required';
-    if (s.length != 13) return 'Enter 13-digit CNIC number';
-    return null;
-  }
-
-  String? _validateAmount(String? v) {
-    final s = (v ?? '').trim();
-    if (s.isEmpty) return 'Sales amount is required';
-    final value = double.tryParse(s);
-    if (value == null || value <= 0) {
-      return 'Enter a valid amount';
-    }
-    return null;
-  }
-
-  Future<void> _submitSurvey() async {
-    final form = _formKey.currentState;
-    if (form == null) return;
-
-    FocusScope.of(context).unfocus();
-    if (!form.validate()) return;
-
-    // Extra safety: ensure each brand row has brand, pack and amount
-    for (final e in _brandSales) {
-      if (e.brand == null || e.brand!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select brand for all rows.')),
-        );
-        return;
-      }
-      if (e.productId == null || e.productId!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select pack for all rows.')),
-        );
-        return;
-      }
-      if (_validateAmount(e.amountCtrl.text) != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter valid sales amount.')),
-        );
-        return;
-      }
-    }
-
-    setState(() => _submitting = true);
-
-    // TODO: send to API (include _brandSales data)
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() => _submitting = false);
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Survey submitted successfully!')),
-    );
-
-    // Clear form after submit
-    _formKey.currentState?.reset();
-    _nameCtrl.clear();
-    _phoneCtrl.clear();
-    _cnicCtrl.clear();
-    _addressCtrl.clear();
-    _cityCtrl.clear();
-    _commentCtrl.clear();
-    for (final e in _brandSales) {
-      e.brand = null;
-      e.productId = null;
-      e.amountCtrl.clear();
-    }
-    // keep one row, clear others if you want:
-    if (_brandSales.length > 1) {
-      for (int i = 1; i < _brandSales.length; i++) {
-        _brandSales[i].amountCtrl.dispose();
-      }
-      _brandSales.removeRange(1, _brandSales.length);
-    }
-    setState(() {});
-  }
-
-  void _addBrandSaleRow() {
-    setState(() {
-      _brandSales.add(BrandSaleEntry());
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Daily Sales Survey',
-          style: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.primary,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Fill today’s sales details',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 13,
-                    color: Color(0xFF75748A),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // Name
-                _InputCard(
-                  hint: 'Name',
-                  icon: Icons.person_outline_rounded,
-                  controller: _nameCtrl,
-                  validator: (v) => _validateRequired(v, 'Name'),
-                ),
-                const SizedBox(height: 12),
-
-                // Phone
-                _InputCard(
-                  hint: 'Phone Number',
-                  icon: Icons.phone_rounded,
-                  controller: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  validator: _validatePhone,
-                ),
-                const SizedBox(height: 12),
-
-                // CNIC
-                _InputCard(
-                  hint: 'CNIC Number (13 digits)',
-                  icon: Icons.badge_outlined,
-                  controller: _cnicCtrl,
-                  keyboardType: TextInputType.number,
-                  validator: _validateCnic,
-                ),
-                const SizedBox(height: 12),
-
-                // Address
-                _InputCard(
-                  hint: 'Address',
-                  icon: Icons.home_outlined,
-                  controller: _addressCtrl,
-                  validator: (v) => _validateRequired(v, 'Address'),
-                ),
-                const SizedBox(height: 12),
-
-                // City
-                _InputCard(
-                  hint: 'City',
-                  icon: Icons.location_city_outlined,
-                  controller: _cityCtrl,
-                  validator: (v) => _validateRequired(v, 'City'),
-                ),
-                const SizedBox(height: 20),
-
-                // ---------- BRAND SALES SECTION ----------
-                const Text(
-                  'Brand-wise sales',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Select brand, pack and enter sales amount for each.',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 12.5,
-                    color: Color(0xFF75748A),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _brandSales.length,
-                  itemBuilder: (context, index) {
-                    final entry = _brandSales[index];
-                    final brandProducts = _brandProductsFor(entry.brand);
-
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index == _brandSales.length - 1 ? 12 : 16,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Brand ${index + 1}',
-                            style: const TextStyle(
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: 12.5,
-                              color: Color(0xFF75748A),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          _DropdownCard(
-                            label: 'Brand',
-                            icon: Icons.local_cafe_outlined,
-                            value: entry.brand,
-                            items: _brands
-                                .map(
-                                  (b) => DropdownMenuItem<String>(
-                                    value: b,
-                                    child: Text(
-                                      b,
-                                      style: const TextStyle(
-                                        fontFamily: AppTheme.fontFamily,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                entry.brand = val;
-                                entry.productId = null;
-                              });
-                            },
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return 'Brand is required';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          _DropdownCard(
-                            label: 'Pack (grams)',
-                            icon: Icons.inventory_2_outlined,
-                            value: entry.productId,
-                            enabled: entry.brand != null,
-                            items: brandProducts
-                                .map(
-                                  (p) => DropdownMenuItem<String>(
-                                    value: p['id'].toString(),
-                                    child: Text(
-                                      _packLabel(p),
-                                      style: const TextStyle(
-                                        fontFamily: AppTheme.fontFamily,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                entry.productId = val;
-                              });
-                            },
-                            validator: (v) {
-                              if (entry.brand != null &&
-                                  brandProducts.isNotEmpty &&
-                                  (v == null || v.isEmpty)) {
-                                return 'Pack is required';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          _InputCard(
-                            hint: 'Sales Amount',
-                            icon: Icons.attach_money_rounded,
-                            controller: entry.amountCtrl,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            validator: _validateAmount,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                // + Add button aligned bottom-right under the last field
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _addBrandSaleRow,
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      size: 20,
-                      color: AppTheme.primary,
-                    ),
-                    label: const Text(
-                      'Add brand sale',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontFamily,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Comment (multiline)
-                _MultilineInputCard(
-                  hint: 'Comment (3 lines max)',
-                  icon: Icons.notes_rounded,
-                  controller: _commentCtrl,
-                  maxLines: 3,
-                  validator: (v) => _validateRequired(v, 'Comment'),
-                ),
-
-                const SizedBox(height: 22),
-
-                Center(
-                  child: SizedBox(
-                    width: 180,
-                    height: 44,
-                    child: _PrimaryGradientButton(
-                      text: _submitting ? 'PLEASE WAIT...' : 'SUBMIT',
-                      loading: _submitting,
-                      onPressed: _submitting ? null : _submitSurvey,
-                    ),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
+          );
+        },
+      );
+    },
+  );
 }
-
-// ------------------ UI WIDGETS ------------------
-
-class _InputCard extends StatelessWidget {
-  const _InputCard({
-    required this.hint,
-    required this.icon,
-    this.controller,
-    this.keyboardType,
-    this.validator,
-    this.obscureText = false,
-    this.onToggleObscure,
-  });
-
-  final String hint;
-  final IconData icon;
-  final TextEditingController? controller;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-  final bool obscureText;
-  final VoidCallback? onToggleObscure;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.primary.withOpacity(.08),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: AppTheme.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                keyboardType: keyboardType,
-                validator: validator,
-                obscureText: obscureText,
-                style: const TextStyle(
-                  fontFamily: AppTheme.fontFamily,
-                  color: Color(0xFF1F1235),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: hint,
-                  border: InputBorder.none,
-                  isCollapsed: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 10),
-                  hintStyle: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    color: Color(0xFF9A8EB5),
-                    fontSize: 13.5,
-                  ),
-                ),
-              ),
-            ),
-            if (onToggleObscure != null)
-              IconButton(
-                onPressed: onToggleObscure,
-                icon: Icon(
-                  obscureText
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
-                  color: const Color(0xFFB1A4CC),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
-class _PrimaryGradientButton extends StatelessWidget {
-  const _PrimaryGradientButton({
-    required this.text,
-    required this.onPressed,
-    this.loading = false,
-  });
-
-  final String text;
-  final VoidCallback? onPressed;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final disabled = loading || onPressed == null;
-
-    return Opacity(
-      opacity: disabled ? 0.7 : 1,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            colors: [AppTheme.primary, AppTheme.accent],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withOpacity(0.20),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(28),
-            onTap: disabled ? null : onPressed,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 18, vertical: 8),
-                child: loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        text,
-                        style: const TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MultilineInputCard extends StatelessWidget {
-  const _MultilineInputCard({
-    required this.hint,
-    required this.icon,
-    this.controller,
-    this.validator,
-    this.maxLines = 3,
-  });
-
-  final String hint;
-  final IconData icon;
-  final TextEditingController? controller;
-  final String? Function(String?)? validator;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 80),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.primary.withOpacity(.08),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Icon(icon, size: 20, color: AppTheme.primary),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                validator: validator,
-                maxLines: maxLines,
-                keyboardType: TextInputType.multiline,
-                style: const TextStyle(
-                  fontFamily: AppTheme.fontFamily,
-                  color: Color(0xFF1F1235),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: hint,
-                  border: InputBorder.none,
-                  isCollapsed: false,
-                  hintStyle: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    color: Color(0xFF9A8EB5),
-                    fontSize: 13.5,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DropdownCard extends StatelessWidget {
-  const _DropdownCard({
-    required this.label,
-    required this.icon,
-    required this.items,
-    this.value,
-    this.onChanged,
-    this.validator,
-    this.enabled = true,
-  });
-
-  final String label;
-  final IconData icon;
-  final List<DropdownMenuItem<String>> items;
-  final String? value;
-  final ValueChanged<String?>? onChanged;
-  final String? Function(String?)? validator;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.6,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 0,
-        child: Container(
-          height: 54,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppTheme.primary.withOpacity(.08),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: AppTheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: value,
-                  items: items,
-                  onChanged: enabled ? onChanged : null,
-                  validator: validator,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 20,
-                    color: Color(0xFFB1A4CC),
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    isCollapsed: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 11),
-                    hintText: label,
-                    hintStyle: const TextStyle(
-                      fontFamily: AppTheme.fontFamily,
-                      color: Color(0xFF9A8EB5),
-                      fontSize: 13.5,
-                    ),
-                  ),
-                  style: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    color: Color(0xFF1F1235),
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-*/
-// class SurveyScreenView extends StatefulWidget {
-//   const SurveyScreenView({super.key});
-
-//   @override
-//   State<SurveyScreenView> createState() => _SurveyScreenViewState();
-// }
-
-// class _SurveyScreenViewState extends State<SurveyScreenView> {
-//   final _formKey = GlobalKey<FormState>();
-
-//   final _nameCtrl = TextEditingController();
-//   final _phoneCtrl = TextEditingController();
-//   final _cnicCtrl = TextEditingController();
-//   final _addressCtrl = TextEditingController();
-//   final _cityCtrl = TextEditingController();
-//   final _salesAmountCtrl = TextEditingController();
-//   final _commentCtrl = TextEditingController();
-
-//   bool _submitting = false;
-
-//   // -------- brand / pack selection --------
-//   String? _selectedBrand;
-//   String? _selectedProductId; // item "id"
-
-  
-//   String _packLabel(Map<String, dynamic> p) {
-//     final name = (p['name'] ?? '').toString().toUpperCase();
-//     final match = RegExp(r'(\d+(\.\d+)?)GM').firstMatch(name);
-//     final grams = match != null ? match.group(0)! : name;
-//     return grams; // e.g. "27GM"
-//   }
-
-
-
-//   @override
-//   void dispose() {
-//     _nameCtrl.dispose();
-//     _phoneCtrl.dispose();
-//     _cnicCtrl.dispose();
-//     _addressCtrl.dispose();
-//     _cityCtrl.dispose();
-//     _salesAmountCtrl.dispose();
-//     _commentCtrl.dispose();
-//     super.dispose();
-//   }
-
-//   // ---------- validators ----------
-
-//   String? _validateRequired(String? v, String field) {
-//     final s = (v ?? '').trim();
-//     if (s.isEmpty) return '$field is required';
-//     return null;
-//   }
-
-//   String? _validatePhone(String? v) {
-//     final s = (v ?? '').trim();
-//     if (s.isEmpty) return 'Phone number is required';
-//     if (s.length < 8) return 'Enter a valid phone number';
-//     return null;
-//   }
-
-//   String? _validateCnic(String? v) {
-//     final s = (v ?? '').replaceAll(RegExp(r'\D'), '');
-//     if (s.isEmpty) return 'CNIC number is required';
-//     if (s.length != 13) return 'Enter 13-digit CNIC number';
-//     return null;
-//   }
-
-//   String? _validateAmount(String? v) {
-//     final s = (v ?? '').trim();
-//     if (s.isEmpty) return 'Sales amount is required';
-//     final value = double.tryParse(s);
-//     if (value == null || value <= 0) {
-//       return 'Enter a valid amount';
-//     }
-//     return null;
-//   }
-
-//   Future<void> _submitSurvey() async {
-//     final form = _formKey.currentState;
-//     if (form == null) return;
-
-//     FocusScope.of(context).unfocus();
-//     if (!form.validate()) return;
-
-//     // extra safety for brand & pack
-//     if (_selectedBrand == null || _selectedProductId == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text('Please select brand and pack size.'),
-//         ),
-//       );
-//       return;
-//     }
-
-//     setState(() => _submitting = true);
-
-//     // TODO: send to API (you can also send _selectedProduct map)
-//     await Future.delayed(const Duration(seconds: 1));
-
-//     setState(() => _submitting = false);
-
-//     if (!mounted) return;
-
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(content: Text('Survey submitted successfully!')),
-//     );
-
-//     // Clear form after submit
-//     _formKey.currentState?.reset();
-//     _nameCtrl.clear();
-//     _phoneCtrl.clear();
-//     _cnicCtrl.clear();
-//     _addressCtrl.clear();
-//     _cityCtrl.clear();
-//     _salesAmountCtrl.clear();
-//     _commentCtrl.clear();
-//     _selectedBrand = null;
-//     _selectedProductId = null;
-//     setState(() {});
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: const Color(0xFFF7F8FA),
-//       appBar: AppBar(
-//         backgroundColor: Colors.white,
-//         elevation: 0,
-//         surfaceTintColor: Colors.transparent,
-//         title: const Text(
-//           'Daily Sales Survey',
-//           style: TextStyle(
-//             fontFamily: AppTheme.fontFamily,
-//             fontSize: 18,
-//             fontWeight: FontWeight.w700,
-//             color: AppTheme.primary,
-//           ),
-//         ),
-//         centerTitle: false,
-//       ),
-//       body: SafeArea(
-//         child: SingleChildScrollView(
-//           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-//           child: Form(
-//             key: _formKey,
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 const Text(
-//                   'Fill today’s sales details',
-//                   style: TextStyle(
-//                     fontFamily: AppTheme.fontFamily,
-//                     fontSize: 13,
-//                     color: Color(0xFF75748A),
-//                   ),
-//                 ),
-//                 const SizedBox(height: 18),
-
-//                 _InputCard(
-//                   hint: 'Name',
-//                   icon: Icons.person_outline_rounded,
-//                   controller: _nameCtrl,
-//                   validator: (v) => _validateRequired(v, 'Name'),
-//                 ),
-//                 const SizedBox(height: 12),
-
-//                 // Phone
-//                 _InputCard(
-//                   hint: 'Phone Number',
-//                   icon: Icons.phone_rounded,
-//                   controller: _phoneCtrl,
-//                   keyboardType: TextInputType.phone,
-//                   validator: _validatePhone,
-//                 ),
-//                 const SizedBox(height: 12),
-
-//                 _InputCard(
-//                   hint: 'CNIC Number (13 digits)',
-//                   icon: Icons.badge_outlined,
-//                   controller: _cnicCtrl,
-//                   keyboardType: TextInputType.number,
-//                   validator: _validateCnic,
-//                 ),
-//                 const SizedBox(height: 12),
-
-//                 // Address
-//                 _InputCard(
-//                   hint: 'Address',
-//                   icon: Icons.home_outlined,
-//                   controller: _addressCtrl,
-//                   validator: (v) => _validateRequired(v, 'Address'),
-//                 ),
-//                 const SizedBox(height: 12),
-
-//                 _InputCard(
-//                   hint: 'City',
-//                   icon: Icons.location_city_outlined,
-//                   controller: _cityCtrl,
-//                   validator: (v) => _validateRequired(v, 'City'),
-//                 ),
-              
-//                 const SizedBox(height: 12),
-
-//                 // Sales Amount
-//                 _InputCard(
-//                   hint: 'Sales Amount',
-//                   icon: Icons.attach_money_rounded,
-//                   controller: _salesAmountCtrl,
-//                   keyboardType:
-//                       const TextInputType.numberWithOptions(decimal: true),
-//                   validator: _validateAmount,
-//                 ),
-//                 const SizedBox(height: 12),
-
-//                 // Comment (multiline)
-//                 _MultilineInputCard(
-//                   hint: 'Comment (3 lines max)',
-//                   icon: Icons.notes_rounded,
-//                   controller: _commentCtrl,
-//                   maxLines: 3,
-//                   validator: (v) => _validateRequired(v, 'Comment'),
-//                 ),
-
-//                 const SizedBox(height: 22),
-
-//                 Center(
-//                   child: SizedBox(
-//                     width: 140,
-//                     height: 42,
-//                     child: _PrimaryGradientButton(
-//                       text: _submitting ? 'PLEASE WAIT...' : 'SUBMIT',
-//                       loading: _submitting,
-//                       onPressed: _submitting ? null : _submitSurvey,
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// // ------------------ UI WIDGETS ------------------
-
-// class _InputCard extends StatelessWidget {
-//   const _InputCard({
-//     required this.hint,
-//     required this.icon,
-//     this.controller,
-//     this.keyboardType,
-//     this.validator,
-//     this.obscureText = false,
-//     this.onToggleObscure,
-//   });
-
-//   final String hint;
-//   final IconData icon;
-//   final TextEditingController? controller;
-//   final TextInputType? keyboardType;
-//   final String? Function(String?)? validator;
-//   final bool obscureText;
-//   final VoidCallback? onToggleObscure;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Material(
-//       color: Colors.white,
-//       borderRadius: BorderRadius.circular(16),
-//       elevation: 0,
-//       child: Container(
-//         height: 54,
-//         decoration: BoxDecoration(
-//           borderRadius: BorderRadius.circular(16),
-//           border: Border.all(
-//             color: AppTheme.primary.withOpacity(.08),
-//           ),
-//         ),
-//         padding: const EdgeInsets.symmetric(horizontal: 14),
-//         child: Row(
-//           children: [
-//             Icon(icon, size: 20, color: AppTheme.primary),
-//             const SizedBox(width: 10),
-//             Expanded(
-//               child: TextFormField(
-//                 controller: controller,
-//                 keyboardType: keyboardType,
-//                 validator: validator,
-//                 obscureText: obscureText,
-//                 style: const TextStyle(
-//                   fontFamily: AppTheme.fontFamily,
-//                   color: Color(0xFF1F1235),
-//                   fontSize: 14.5,
-//                   fontWeight: FontWeight.w500,
-//                 ),
-//                 decoration: InputDecoration(
-//                   hintText: hint,
-//                   border: InputBorder.none,
-//                   isCollapsed: true,
-//                   contentPadding:
-//                       const EdgeInsets.symmetric(vertical: 10),
-//                   hintStyle: const TextStyle(
-//                     fontFamily: AppTheme.fontFamily,
-//                     color: Color(0xFF9A8EB5),
-//                     fontSize: 13.5,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//             if (onToggleObscure != null)
-//               IconButton(
-//                 onPressed: onToggleObscure,
-//                 icon: Icon(
-//                   obscureText
-//                       ? Icons.visibility_off_outlined
-//                       : Icons.visibility_outlined,
-//                   size: 20,
-//                   color: const Color(0xFFB1A4CC),
-//                 ),
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _PrimaryGradientButton extends StatelessWidget {
-//   const _PrimaryGradientButton({
-//     required this.text,
-//     required this.onPressed,
-//     this.loading = false,
-//   });
-
-//   final String text;
-//   final VoidCallback? onPressed;
-//   final bool loading;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final disabled = loading || onPressed == null;
-
-//     return Opacity(
-//       opacity: disabled ? 0.7 : 1,
-//       child: Container(
-//         decoration: BoxDecoration(
-//           borderRadius: BorderRadius.circular(28),
-//           gradient: const LinearGradient(
-//             colors: [AppTheme.primary, AppTheme.accent],
-//             begin: Alignment.centerLeft,
-//             end: Alignment.centerRight,
-//           ),
-//           boxShadow: [
-//             BoxShadow(
-//               color: AppTheme.primary.withOpacity(0.20),
-//               blurRadius: 16,
-//               offset: const Offset(0, 8),
-//             ),
-//           ],
-//         ),
-//         child: Material(
-//           color: Colors.transparent,
-//           child: InkWell(
-//             borderRadius: BorderRadius.circular(28),
-//             onTap: disabled ? null : onPressed,
-//             child: Center(
-//               child: Padding(
-//                 padding: const EdgeInsets.symmetric(
-//                     horizontal: 18, vertical: 8),
-//                 child: loading
-//                     ? const SizedBox(
-//                         height: 20,
-//                         width: 20,
-//                         child: CircularProgressIndicator(
-//                           strokeWidth: 2,
-//                           valueColor:
-//                               AlwaysStoppedAnimation<Color>(Colors.white),
-//                         ),
-//                       )
-//                     : Text(
-//                         text,
-//                         style: const TextStyle(
-//                           fontFamily: AppTheme.fontFamily,
-//                           fontSize: 16,
-//                           fontWeight: FontWeight.w600,
-//                           color: Colors.white,
-//                         ),
-//                       ),
-//               ),
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _MultilineInputCard extends StatelessWidget {
-//   const _MultilineInputCard({
-//     required this.hint,
-//     required this.icon,
-//     this.controller,
-//     this.validator,
-//     this.maxLines = 3,
-//   });
-
-//   final String hint;
-//   final IconData icon;
-//   final TextEditingController? controller;
-//   final String? Function(String?)? validator;
-//   final int maxLines;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Material(
-//       color: Colors.white,
-//       borderRadius: BorderRadius.circular(16),
-//       elevation: 0,
-//       child: Container(
-//         constraints: const BoxConstraints(minHeight: 80),
-//         decoration: BoxDecoration(
-//           borderRadius: BorderRadius.circular(16),
-//           border: Border.all(
-//             color: AppTheme.primary.withOpacity(.08),
-//           ),
-//         ),
-//         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-//         child: Row(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.only(top: 6),
-//               child: Icon(icon, size: 20, color: AppTheme.primary),
-//             ),
-//             const SizedBox(width: 10),
-//             Expanded(
-//               child: TextFormField(
-//                 controller: controller,
-//                 validator: validator,
-//                 maxLines: maxLines,
-//                 keyboardType: TextInputType.multiline,
-//                 style: const TextStyle(
-//                   fontFamily: AppTheme.fontFamily,
-//                   color: Color(0xFF1F1235),
-//                   fontSize: 14.5,
-//                   fontWeight: FontWeight.w500,
-//                 ),
-//                 decoration: InputDecoration(
-//                   hintText: hint,
-//                   border: InputBorder.none,
-//                   isCollapsed: false,
-//                   hintStyle: const TextStyle(
-//                     fontFamily: AppTheme.fontFamily,
-//                     color: Color(0xFF9A8EB5),
-//                     fontSize: 13.5,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _DropdownCard extends StatelessWidget {
-//   const _DropdownCard({
-//     required this.label,
-//     required this.icon,
-//     required this.items,
-//     this.value,
-//     this.onChanged,
-//     this.validator,
-//     this.enabled = true,
-//   });
-
-//   final String label;
-//   final IconData icon;
-//   final List<DropdownMenuItem<String>> items;
-//   final String? value;
-//   final ValueChanged<String?>? onChanged;
-//   final String? Function(String?)? validator;
-//   final bool enabled;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Opacity(
-//       opacity: enabled ? 1 : 0.6,
-//       child: Material(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(16),
-//         elevation: 0,
-//         child: Container(
-//           height: 54,
-//           decoration: BoxDecoration(
-//             borderRadius: BorderRadius.circular(16),
-//             border: Border.all(
-//               color: AppTheme.primary.withOpacity(.08),
-//             ),
-//           ),
-//           padding: const EdgeInsets.symmetric(horizontal: 14),
-//           child: Row(
-//             children: [
-//               Icon(icon, size: 20, color: AppTheme.primary),
-//               const SizedBox(width: 10),
-//               Expanded(
-//                 child: DropdownButtonFormField<String>(
-//                   value: value,
-//                   items: items,
-//                   onChanged: enabled ? onChanged : null,
-//                   validator: validator,
-//                   icon: const Icon(
-//                     Icons.keyboard_arrow_down_rounded,
-//                     size: 20,
-//                     color: Color(0xFFB1A4CC),
-//                   ),
-//                   decoration: InputDecoration(
-//                     border: InputBorder.none,
-//                     isCollapsed: true,
-//                     contentPadding:
-//                         const EdgeInsets.symmetric(vertical: 11),
-//                     hintText: label,
-//                     hintStyle: const TextStyle(
-//                       fontFamily: AppTheme.fontFamily,
-//                       color: Color(0xFF9A8EB5),
-//                       fontSize: 13.5,
-//                     ),
-//                   ),
-//                   style: const TextStyle(
-//                     fontFamily: AppTheme.fontFamily,
-//                     color: Color(0xFF1F1235),
-//                     fontSize: 14.5,
-//                     fontWeight: FontWeight.w500,
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
 
