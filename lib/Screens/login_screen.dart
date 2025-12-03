@@ -106,7 +106,7 @@ class _AuthScreenState extends State<AuthScreen> {
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else if (email == 'testsurvery@gmail.com' && password == 'Testing@123') {
-      
+
       // ➜ Go to SurveyScreenView
       Navigator.pushReplacement(
         context,
@@ -517,6 +517,7 @@ class _FooterSwitch extends StatelessWidget {
             fontFamily: AppTheme.fontFamily,
             fontSize: 13.5,
             color: Color(0xFF75748A),
+            fontWeight: FontWeight.w500
           ),
         ),
         GestureDetector(
@@ -527,7 +528,7 @@ class _FooterSwitch extends StatelessWidget {
               fontFamily: AppTheme.fontFamily,
               fontSize: 13.5,
               color: AppTheme.accent,
-              decoration: TextDecoration.underline,
+          //    decoration: TextDecoration.underline,
               decorationThickness: 1.4,
             ),
           ),
