@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:voice_assistant_project/Screens/islamic_calender_screen.dart';
+import 'package:voice_assistant_project/Screens/login_screen.dart';
+import 'package:voice_assistant_project/Screens/sales_survery_screen.dart';
 import 'package:voice_assistant_project/Screens/scan_points_screen.dart';
 import 'package:voice_assistant_project/Screens/send_points_screen.dart';
 import 'package:voice_assistant_project/Screens/voice_assistant_screen.dart';
@@ -414,9 +416,18 @@ AppBar _buildAppBar() {
             Expanded(
               child: _QuickTile(
                 icon: Icons.person,
-                title: 'Profile',
-                subtitle: 'View Profile Details',
-                onTap: () {
+                title: 'Logout',
+                subtitle: 'Logout',
+                onTap: () async{
+
+                               final shouldLogout = await showLogoutDialog(context);
+if (shouldLogout == true) {
+ Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+
+}
                  // Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
               ),
