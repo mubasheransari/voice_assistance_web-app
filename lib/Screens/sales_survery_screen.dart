@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:voice_assistant_project/Screens/login_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
 
 const List<Map<String, dynamic>> kTeaProducts =  [
@@ -7338,9 +7339,21 @@ class _SurveyScreenViewState extends State<SurveyScreenView> {
             fontFamily: AppTheme.fontFamily,
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppTheme.primary,
+            color: Colors.black,//AppTheme.primary,
           ),
         ),
+        actions: [
+            IconButton(onPressed: ()async{
+              final shouldLogout = await showLogoutDialog(context);
+if (shouldLogout == true) {
+ Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+
+}
+            }, icon: Icon(Icons.logout))
+        ],
         centerTitle: false,
       ),
       body: SafeArea(
@@ -8182,3 +8195,156 @@ class _SearchableProductDropdownCard extends StatelessWidget {
 }
 }
 
+
+
+Future<bool?> showLogoutDialog(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return Dialog(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.06),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.accent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Title
+              const Text(
+                'Logout from app?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Subtitle
+              const Text(
+                'You will be logged out from your account. '
+                'You can log in again anytime.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 13,
+                  color: Color(0xFF75748A),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Buttons
+              Row(
+                children: [
+                  // Cancel
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: AppTheme.primary.withOpacity(0.18),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          backgroundColor: const Color(0xFFF7F8FA),
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontFamily,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF75748A),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Logout (gradient)
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () => Navigator.of(ctx).pop(true),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.primary, AppTheme.accent],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primary.withOpacity(0.20),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Logout',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontFamily,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
