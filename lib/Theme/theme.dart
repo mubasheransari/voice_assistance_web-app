@@ -8,7 +8,7 @@ class AppTheme {
   static const Color accent = Color(0xFFEE8A41);
   static const Color green = Color(0xFF3DB38D);
   static const Color bg = Color(0xFFF5F3FF);
-  static const String fontFamily = 'Poppins';
+  static const String fontFamily = 'ClashGrotesk';
 
   static ThemeData get lightTheme {
     final base = ThemeData.light();

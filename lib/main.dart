@@ -51,7 +51,7 @@ class RewardApp extends StatelessWidget {
         title: 'Reward Scanner',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          fontFamily: 'Poppins',
+          fontFamily: 'ClashGrotesk',
           colorScheme:
               ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
           useMaterial3: true,

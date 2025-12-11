@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSearch(),
+             // _buildSearch(),
               const SizedBox(height: 14),
               _buildPointsCard(),
               const SizedBox(height: 20),
@@ -60,7 +60,7 @@ AppBar _buildAppBar() {
     backgroundColor: Colors.white,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
-    toolbarHeight: 95,
+    toolbarHeight: 80,
     titleSpacing: 16,
     title: Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 6),
@@ -105,20 +105,20 @@ AppBar _buildAppBar() {
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
                 // English Tagline
-                Text(
-                  'Loved in Every Home, Trusted Across the Nation!',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 14,
-                         color:Colors.black, // color: AppTheme.primary,
-                    fontWeight: FontWeight.w400,
-                    height: 1.25,
-                  ),
-                ),
+                // Text(
+                //   'Loved in Every Home, Trusted Across the Nation!',
+                //   maxLines: 2,
+                //   overflow: TextOverflow.ellipsis,
+                //   style: TextStyle(
+                //     fontFamily: AppTheme.fontFamily,
+                //     fontSize: 14,
+                //          color:Colors.black, // color: AppTheme.primary,
+                //     fontWeight: FontWeight.w400,
+                //     height: 1.25,
+                //   ),
+                // ),
 
-                SizedBox(height: 5),
+                // SizedBox(height: 5),
 
                 // Urdu Tagline
                 Text(
@@ -126,7 +126,7 @@ AppBar _buildAppBar() {
                   textDirection: TextDirection.rtl,
                   style: TextStyle(
                     fontFamily: AppTheme.fontFamily,
-                    fontSize: 15,
+                    fontSize: 18,
                     color:Colors.red,
                   //  color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
@@ -149,8 +149,9 @@ AppBar _buildAppBar() {
                       'Karachi, Pakistan',
                       style: TextStyle(
                         fontFamily: AppTheme.fontFamily,
-                        fontSize: 12.5,
+                        fontSize: 13.5,
                         color: Color(0xFF75748A),
+                        fontWeight: FontWeight.w900
                       ),
                     ),
                   ],
