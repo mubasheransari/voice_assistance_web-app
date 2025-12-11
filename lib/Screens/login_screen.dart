@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:voice_assistant_project/Screens/sales_survery_screen.dart';
 import 'package:voice_assistant_project/Theme/theme.dart';
 import 'package:voice_assistant_project/Screens/home_screen.dart';
@@ -12,6 +13,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   int tab = 0;
+  var storage = GetStorage();
 
   final _loginFormKey = GlobalKey<FormState>();
   final _signupFormKey = GlobalKey<FormState>();
@@ -97,12 +99,14 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (email == 'testuser@gmail.com' && password == 'Testing@123') {
       // ➜ Go to HomeScreen
+          storage.write("user", 1);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
+    
       );
     } else if (email == 'testsurvery@gmail.com' && password == 'Testing@123') {
-
+   storage.write("supervisor", 2);
       // ➜ Go to SurveyScreenView
       Navigator.pushReplacement(
         context,

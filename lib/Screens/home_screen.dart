@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:voice_assistant_project/Screens/islamic_calender_screen.dart';
 import 'package:voice_assistant_project/Screens/login_screen.dart';
 import 'package:voice_assistant_project/Screens/sales_survery_screen.dart';
@@ -9,6 +10,8 @@ import 'package:voice_assistant_project/Theme/theme.dart';
 import '../main.dart';
 import 'prayer_times_screen.dart';
 
+    var storage = GetStorage();
+
 class HomeScreen extends StatelessWidget {
   static const String routeName = '/home';
 
@@ -16,6 +19,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: _buildAppBar(),
       body: SafeArea(
@@ -422,6 +426,7 @@ AppBar _buildAppBar() {
 
                                final shouldLogout = await showLogoutDialog(context);
 if (shouldLogout == true) {
+  storage.remove('user');
  Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AuthScreen()),

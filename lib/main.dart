@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:voice_assistant_project/Bloc/global_bloc.dart';
 import 'package:voice_assistant_project/Bloc/global_event.dart';
+import 'package:voice_assistant_project/Screens/home_screen.dart';
 import 'package:voice_assistant_project/Screens/login_screen.dart';
 import 'package:voice_assistant_project/Screens/sales_survery_screen.dart';
 import 'package:voice_assistant_project/services/prayer_times_service.dart';
@@ -36,6 +37,9 @@ class RewardApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var storage = GetStorage();
+    var user = storage.read("user");
+    var supervisor = storage.read("supervisor");
     return MultiBlocProvider(
       providers: [
         BlocProvider<GlobalBloc>(
@@ -52,7 +56,7 @@ class RewardApp extends StatelessWidget {
               ColorScheme.fromSeed(seedColor: const Color(0xFF7F53FD)),
           useMaterial3: true,
         ),
-        home: const AuthScreen() //HomeScreen(),
+        home:user != null ? HomeScreen(): supervisor != null ?SurveyScreenView():  AuthScreen() //HomeScreen(),
       ),
     );
   }
