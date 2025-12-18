@@ -6,17 +6,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:voice_assistant_project/Theme/theme.dart';
 import 'package:get_storage/get_storage.dart';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:get_storage/get_storage.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-
-// import your theme
-// import 'app_theme.dart';
-
-// ---------------- SURVEY QUESTIONS ----------------
 
 const List<String> kSurveyQuestions = [
   'What is your phone number?',

@@ -10,6 +10,8 @@ import 'package:voice_assistant_project/Theme/theme.dart';
 import '../main.dart';
 import 'prayer_times_screen.dart';
 
+//i just want to check if "type" is != null then check when sucess coondition true then its navigate to other screen according to the user type othwerwise it will go to onboarding screen
+
     var storage = GetStorage();
 
 class HomeScreen extends StatelessWidget {
@@ -222,7 +224,7 @@ AppBar _buildAppBar() {
       //     ),
       //   ),
       // ],
-    );
+    ); 
   }*/
 
   Widget _buildSearch() {
@@ -434,7 +436,6 @@ if (shouldLogout == true) {
       );
 
 }
-                 // Navigator.push(context, MaterialPageRoute(builder: (context)=> PrayerTimesScreen()));
                 },
               ),
             ),
